@@ -6,11 +6,7 @@ import (
 )
 
 func Migrate(db *gorm.DB) error {
-	if err := db.AutoMigrate(
-		&entities.Migration{},
-		&entities.User{},
-		&entities.RefreshToken{},
-	); err != nil {
+	if err := db.AutoMigrate(&entities.Migration{}); err != nil {
 		return err
 	}
 

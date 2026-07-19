@@ -2,79 +2,98 @@ package service
 
 import (
 	"context"
+	"errors"
+	"strings"
 
+	"github.com/Hieu3z03/chat-api-golang/database/entities"
 	"github.com/Hieu3z03/chat-api-golang/modules/user/dto"
 	"github.com/Hieu3z03/chat-api-golang/modules/user/repository"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type UserService interface {
-	GetUserById(ctx context.Context, userId string) (dto.UserResponse, error)
-	Update(ctx context.Context, req dto.UserUpdateRequest, userId string) (dto.UserUpdateResponse, error)
-	Delete(ctx context.Context, userId string) error
+	Sync(ctx context.Context, userID uuid.UUID, request dto.SyncUserRequest) (dto.UserResponse, error)
+	GetByID(ctx context.Context, userID uuid.UUID) (dto.UserResponse, error)
+	Search(ctx context.Context, search string, limit int) ([]dto.UserResponse, error)
 }
 
 type userService struct {
-	userRepository repository.UserRepository
-	db             *gorm.DB
+	users repository.UserRepository
 }
 
-func NewUserService(
-	userRepo repository.UserRepository,
-	db *gorm.DB,
-) UserService {
-	return &userService{
-		userRepository: userRepo,
-		db:             db,
+func NewUserService(users repository.UserRepository) UserService {
+	return &userService{users: users}
+}
+
+func (service *userService) Sync(
+	ctx context.Context,
+	userID uuid.UUID,
+	request dto.SyncUserRequest,
+) (dto.UserResponse, error) {
+	firstName := strings.TrimSpace(request.FirstName)
+	lastName := strings.TrimSpace(request.LastName)
+	username := strings.TrimSpace(request.Username)
+	if firstName == "" || lastName == "" || username == "" {
+		return dto.UserResponse{}, dto.ErrInvalidUserProfile
 	}
-}
 
-func (s *userService) GetUserById(ctx context.Context, userId string) (dto.UserResponse, error) {
-	user, err := s.userRepository.GetUserById(ctx, s.db, userId)
+	existing, err := service.users.FindByUsername(ctx, username)
+	if err == nil && existing.ID != userID {
+		return dto.UserResponse{}, dto.ErrUsernameTaken
+	}
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return dto.UserResponse{}, err
+	}
+
+	user, err := service.users.Upsert(ctx, entities.User{
+		ID:        userID,
+		FirstName: firstName,
+		LastName:  lastName,
+		Username:  username,
+		AvatarID:  request.AvatarID,
+	})
 	if err != nil {
 		return dto.UserResponse{}, err
 	}
 
+	return toUserResponse(user), nil
+}
+
+func (service *userService) GetByID(ctx context.Context, userID uuid.UUID) (dto.UserResponse, error) {
+	user, err := service.users.FindByID(ctx, userID)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return dto.UserResponse{}, dto.ErrUserNotFound
+	}
+	if err != nil {
+		return dto.UserResponse{}, err
+	}
+
+	return toUserResponse(user), nil
+}
+
+func (service *userService) Search(ctx context.Context, search string, limit int) ([]dto.UserResponse, error) {
+	users, err := service.users.Search(ctx, strings.TrimSpace(search), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	responses := make([]dto.UserResponse, 0, len(users))
+	for _, user := range users {
+		responses = append(responses, toUserResponse(user))
+	}
+
+	return responses, nil
+}
+
+func toUserResponse(user entities.User) dto.UserResponse {
 	return dto.UserResponse{
-		ID:         user.ID.String(),
-		Name:       user.Name,
-		Email:      user.Email,
-		TelpNumber: user.TelpNumber,
-		Role:       user.Role,
-		ImageUrl:   user.ImageUrl,
-	}, nil
-}
-
-func (s *userService) Update(ctx context.Context, req dto.UserUpdateRequest, userId string) (dto.UserUpdateResponse, error) {
-	user, err := s.userRepository.GetUserById(ctx, s.db, userId)
-	if err != nil {
-		return dto.UserUpdateResponse{}, dto.ErrUserNotFound
+		ID:        user.ID,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Username:  user.Username,
+		AvatarID:  user.AvatarID,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
 	}
-
-	if req.Name != "" {
-		user.Name = req.Name
-	}
-	if req.Email != "" {
-		user.Email = req.Email
-	}
-	if req.TelpNumber != "" {
-		user.TelpNumber = req.TelpNumber
-	}
-
-	updatedUser, err := s.userRepository.Update(ctx, s.db, user)
-	if err != nil {
-		return dto.UserUpdateResponse{}, err
-	}
-
-	return dto.UserUpdateResponse{
-		ID:         updatedUser.ID.String(),
-		Name:       updatedUser.Name,
-		TelpNumber: updatedUser.TelpNumber,
-		Role:       updatedUser.Role,
-		Email:      updatedUser.Email,
-	}, nil
-}
-
-func (s *userService) Delete(ctx context.Context, userId string) error {
-	return s.userRepository.Delete(ctx, s.db, userId)
 }

@@ -22,10 +22,6 @@ func (connection *PostgreSQLConnection) Shutdown() error {
 	return db.Close()
 }
 
-func RunExtension(db *gorm.DB) error {
-	return db.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";").Error
-}
-
 func SetUpDatabaseConnection() (*PostgreSQLConnection, error) {
 	dbUser := getEnvOrDefault("DB_USER", "postgres")
 	dbPass := getEnvOrDefault("DB_PASS", "")
@@ -54,11 +50,6 @@ func SetUpDatabaseConnection() (*PostgreSQLConnection, error) {
 		return nil, fmt.Errorf("connect to PostgreSQL: %w", err)
 	}
 
-	if err := RunExtension(db); err != nil {
-		_ = CloseDatabaseConnection(db)
-		return nil, fmt.Errorf("enable PostgreSQL uuid-ossp extension: %w", err)
-	}
-
 	return &PostgreSQLConnection{DB: db}, nil
 }
 
@@ -76,10 +67,6 @@ func SetUpTestDatabaseConnection() *gorm.DB {
 		PreferSimpleProtocol: true,
 	}), &gorm.Config{})
 	if err != nil {
-		panic(err)
-	}
-
-	if err := RunExtension(db); err != nil {
 		panic(err)
 	}
 

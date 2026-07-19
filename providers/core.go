@@ -1,12 +1,19 @@
 package providers
 
 import (
+	"context"
+	"fmt"
+	"time"
+
 	"github.com/Hieu3z03/chat-api-golang/config"
-	authController "github.com/Hieu3z03/chat-api-golang/modules/auth/controller"
-	authRepo "github.com/Hieu3z03/chat-api-golang/modules/auth/repository"
-	authService "github.com/Hieu3z03/chat-api-golang/modules/auth/service"
+	channelController "github.com/Hieu3z03/chat-api-golang/modules/channel/controller"
+	channelRepository "github.com/Hieu3z03/chat-api-golang/modules/channel/repository"
+	channelService "github.com/Hieu3z03/chat-api-golang/modules/channel/service"
+	messageController "github.com/Hieu3z03/chat-api-golang/modules/message/controller"
+	messageRepository "github.com/Hieu3z03/chat-api-golang/modules/message/repository"
+	messageService "github.com/Hieu3z03/chat-api-golang/modules/message/service"
 	userController "github.com/Hieu3z03/chat-api-golang/modules/user/controller"
-	"github.com/Hieu3z03/chat-api-golang/modules/user/repository"
+	userRepository "github.com/Hieu3z03/chat-api-golang/modules/user/repository"
 	userService "github.com/Hieu3z03/chat-api-golang/modules/user/service"
 	"github.com/Hieu3z03/chat-api-golang/pkg/constants"
 	"github.com/samber/do"
@@ -41,40 +48,38 @@ func InitDatabases(injector *do.Injector) {
 func RegisterDependencies(injector *do.Injector) error {
 	InitDatabases(injector)
 
-	do.ProvideNamed(injector, constants.JWTService, func(i *do.Injector) (authService.JWTService, error) {
-		return authService.NewJWTService(), nil
+	postgres, err := do.InvokeNamed[*gorm.DB](injector, constants.PostgreSQL)
+	if err != nil {
+		return err
+	}
+	mongodb, err := do.InvokeNamed[*mongo.Database](injector, constants.MongoDB)
+	if err != nil {
+		return err
+	}
+
+	users := userRepository.NewUserRepository(postgres)
+	channels := channelRepository.NewChannelRepository(postgres)
+	messages := messageRepository.NewMessageRepository(mongodb)
+
+	indexContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := messages.EnsureIndexes(indexContext); err != nil {
+		return fmt.Errorf("ensure MongoDB message indexes: %w", err)
+	}
+
+	userUseCases := userService.NewUserService(users)
+	channelUseCases := channelService.NewChannelService(channels, users)
+	messageUseCases := messageService.NewMessageService(messages, channelUseCases)
+
+	do.Provide(injector, func(i *do.Injector) (userController.UserController, error) {
+		return userController.NewUserController(userUseCases), nil
 	})
-
-	db, err := do.InvokeNamed[*gorm.DB](injector, constants.PostgreSQL)
-	if err != nil {
-		return err
-	}
-	if _, err := do.InvokeNamed[*mongo.Database](injector, constants.MongoDB); err != nil {
-		return err
-	}
-
-	jwtService, err := do.InvokeNamed[authService.JWTService](injector, constants.JWTService)
-	if err != nil {
-		return err
-	}
-
-	userRepository := repository.NewUserRepository(db)
-	refreshTokenRepository := authRepo.NewRefreshTokenRepository(db)
-
-	userService := userService.NewUserService(userRepository, db)
-	authService := authService.NewAuthService(userRepository, refreshTokenRepository, jwtService, db)
-
-	do.Provide(
-		injector, func(i *do.Injector) (userController.UserController, error) {
-			return userController.NewUserController(i, userService), nil
-		},
-	)
-
-	do.Provide(
-		injector, func(i *do.Injector) (authController.AuthController, error) {
-			return authController.NewAuthController(i, authService), nil
-		},
-	)
+	do.Provide(injector, func(i *do.Injector) (channelController.ChannelController, error) {
+		return channelController.NewChannelController(channelUseCases), nil
+	})
+	do.Provide(injector, func(i *do.Injector) (messageController.MessageController, error) {
+		return messageController.NewMessageController(messageUseCases), nil
+	})
 
 	return nil
 }

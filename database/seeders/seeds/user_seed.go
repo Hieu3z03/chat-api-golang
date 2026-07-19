@@ -2,12 +2,12 @@ package seeds
 
 import (
 	"encoding/json"
-	"errors"
 	"io"
 	"os"
 
 	"github.com/Hieu3z03/chat-api-golang/database/entities"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 func ListUserSeeder(db *gorm.DB) error {
@@ -33,20 +33,14 @@ func ListUserSeeder(db *gorm.DB) error {
 		}
 	}
 
-	for _, data := range listUser {
-		var user entities.User
-		err := db.Where(&entities.User{Email: data.Email}).First(&user).Error
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return err
-		}
-
-		isData := db.Find(&user, "email = ?", data.Email).RowsAffected
-		if isData == 0 {
-			if err := db.Create(&data).Error; err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
+	return db.Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "id"}},
+		DoUpdates: clause.AssignmentColumns([]string{
+			"first_name",
+			"last_name",
+			"username",
+			"avatar_id",
+			"updated_at",
+		}),
+	}).Create(&listUser).Error
 }

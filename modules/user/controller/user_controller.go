@@ -1,112 +1,104 @@
 package controller
 
 import (
+	"errors"
 	"net/http"
+	"strconv"
 
-	"github.com/Caknoooo/go-pagination"
+	"github.com/Hieu3z03/chat-api-golang/middlewares"
 	"github.com/Hieu3z03/chat-api-golang/modules/user/dto"
-	"github.com/Hieu3z03/chat-api-golang/modules/user/query"
 	"github.com/Hieu3z03/chat-api-golang/modules/user/service"
-	"github.com/Hieu3z03/chat-api-golang/modules/user/validation"
-	"github.com/Hieu3z03/chat-api-golang/pkg/constants"
 	"github.com/Hieu3z03/chat-api-golang/pkg/utils"
 	"github.com/gin-gonic/gin"
-	"github.com/samber/do"
-	"gorm.io/gorm"
+	"github.com/google/uuid"
 )
 
-type (
-	UserController interface {
-		Me(ctx *gin.Context)
-		GetAllUser(ctx *gin.Context)
-		Update(ctx *gin.Context)
-		Delete(ctx *gin.Context)
-	}
-
-	userController struct {
-		userService    service.UserService
-		userValidation *validation.UserValidation
-		db             *gorm.DB
-	}
-)
-
-func NewUserController(injector *do.Injector, us service.UserService) UserController {
-	db := do.MustInvokeNamed[*gorm.DB](injector, constants.PostgreSQL)
-	userValidation := validation.NewUserValidation()
-	return &userController{
-		userService:    us,
-		userValidation: userValidation,
-		db:             db,
-	}
+type UserController interface {
+	Sync(ctx *gin.Context)
+	Me(ctx *gin.Context)
+	GetByID(ctx *gin.Context)
+	Search(ctx *gin.Context)
 }
 
-func (c *userController) GetAllUser(ctx *gin.Context) {
-	var filter = &query.UserFilter{}
-	filter.BindPagination(ctx)
+type userController struct {
+	users service.UserService
+}
 
-	ctx.ShouldBindQuery(filter)
+func NewUserController(users service.UserService) UserController {
+	return &userController{users: users}
+}
 
-	users, total, err := pagination.PaginatedQueryWithIncludable[query.User](c.db, filter)
+func (controller *userController) Sync(ctx *gin.Context) {
+	identity, _ := middlewares.GetRequestIdentity(ctx)
+
+	var request dto.SyncUserRequest
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, utils.BuildResponseFailed("invalid user payload", err.Error(), nil))
+		return
+	}
+
+	user, err := controller.users.Sync(ctx.Request.Context(), identity.UserID, request)
+	if errors.Is(err, dto.ErrUsernameTaken) {
+		ctx.JSON(http.StatusConflict, utils.BuildResponseFailed("failed to sync user", err.Error(), nil))
+		return
+	}
+	if errors.Is(err, dto.ErrInvalidUserProfile) {
+		ctx.JSON(http.StatusBadRequest, utils.BuildResponseFailed("failed to sync user", err.Error(), nil))
+		return
+	}
 	if err != nil {
-		res := utils.BuildResponseFailed(dto.MESSAGE_FAILED_GET_USER, err.Error(), nil)
-		ctx.JSON(http.StatusBadRequest, res)
+		ctx.JSON(http.StatusInternalServerError, utils.BuildResponseFailed("failed to sync user", err.Error(), nil))
 		return
 	}
 
-	paginationResponse := pagination.CalculatePagination(filter.Pagination, total)
-	response := pagination.NewPaginatedResponse(http.StatusOK, dto.MESSAGE_SUCCESS_GET_LIST_USER, users, paginationResponse)
-	ctx.JSON(http.StatusOK, response)
+	ctx.JSON(http.StatusOK, utils.BuildResponseSuccess("user synchronized", user))
 }
 
-func (c *userController) Me(ctx *gin.Context) {
-	userId := ctx.MustGet("user_id").(string)
+func (controller *userController) Me(ctx *gin.Context) {
+	identity, _ := middlewares.GetRequestIdentity(ctx)
+	controller.respondWithUser(ctx, identity.UserID)
+}
 
-	result, err := c.userService.GetUserById(ctx.Request.Context(), userId)
+func (controller *userController) GetByID(ctx *gin.Context) {
+	userID, err := uuid.Parse(ctx.Param("user_id"))
 	if err != nil {
-		res := utils.BuildResponseFailed(dto.MESSAGE_FAILED_GET_USER, err.Error(), nil)
-		ctx.JSON(http.StatusBadRequest, res)
+		ctx.JSON(http.StatusBadRequest, utils.BuildResponseFailed("invalid user id", err.Error(), nil))
 		return
 	}
 
-	res := utils.BuildResponseSuccess(dto.MESSAGE_SUCCESS_GET_USER, result)
-	ctx.JSON(http.StatusOK, res)
+	controller.respondWithUser(ctx, userID)
 }
 
-func (c *userController) Update(ctx *gin.Context) {
-	var req dto.UserUpdateRequest
-	if err := ctx.ShouldBind(&req); err != nil {
-		res := utils.BuildResponseFailed(dto.MESSAGE_FAILED_GET_DATA_FROM_BODY, err.Error(), nil)
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, res)
-		return
+func (controller *userController) Search(ctx *gin.Context) {
+	limit := 20
+	if value := ctx.Query("limit"); value != "" {
+		parsed, err := strconv.Atoi(value)
+		if err != nil || parsed < 1 || parsed > 50 {
+			ctx.JSON(http.StatusBadRequest, utils.BuildResponseFailed("invalid limit", "limit must be between 1 and 50", nil))
+			return
+		}
+		limit = parsed
 	}
 
-	if err := c.userValidation.ValidateUserUpdateRequest(req); err != nil {
-		res := utils.BuildResponseFailed("Validation failed", err.Error(), nil)
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, res)
-		return
-	}
-
-	userId := ctx.MustGet("user_id").(string)
-	result, err := c.userService.Update(ctx.Request.Context(), req, userId)
+	users, err := controller.users.Search(ctx.Request.Context(), ctx.Query("search"), limit)
 	if err != nil {
-		res := utils.BuildResponseFailed(dto.MESSAGE_FAILED_UPDATE_USER, err.Error(), nil)
-		ctx.JSON(http.StatusBadRequest, res)
+		ctx.JSON(http.StatusInternalServerError, utils.BuildResponseFailed("failed to list users", err.Error(), nil))
 		return
 	}
 
-	res := utils.BuildResponseSuccess(dto.MESSAGE_SUCCESS_UPDATE_USER, result)
-	ctx.JSON(http.StatusOK, res)
+	ctx.JSON(http.StatusOK, utils.BuildResponseSuccess("users retrieved", users))
 }
 
-func (c *userController) Delete(ctx *gin.Context) {
-	userId := ctx.MustGet("user_id").(string)
-
-	if err := c.userService.Delete(ctx.Request.Context(), userId); err != nil {
-		res := utils.BuildResponseFailed(dto.MESSAGE_FAILED_DELETE_USER, err.Error(), nil)
-		ctx.AbortWithStatusJSON(http.StatusBadRequest, res)
+func (controller *userController) respondWithUser(ctx *gin.Context, userID uuid.UUID) {
+	user, err := controller.users.GetByID(ctx.Request.Context(), userID)
+	if errors.Is(err, dto.ErrUserNotFound) {
+		ctx.JSON(http.StatusNotFound, utils.BuildResponseFailed("user not found", err.Error(), nil))
+		return
+	}
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, utils.BuildResponseFailed("failed to get user", err.Error(), nil))
 		return
 	}
 
-	res := utils.BuildResponseSuccess(dto.MESSAGE_SUCCESS_DELETE_USER, nil)
-	ctx.JSON(http.StatusOK, res)
+	ctx.JSON(http.StatusOK, utils.BuildResponseSuccess("user retrieved", user))
 }

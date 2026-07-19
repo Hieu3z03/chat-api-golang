@@ -4,101 +4,92 @@ import (
 	"context"
 
 	"github.com/Hieu3z03/chat-api-golang/database/entities"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
-type (
-	UserRepository interface {
-		Register(ctx context.Context, tx *gorm.DB, user entities.User) (entities.User, error)
-		GetUserById(ctx context.Context, tx *gorm.DB, userId string) (entities.User, error)
-		GetUserByEmail(ctx context.Context, tx *gorm.DB, email string) (entities.User, error)
-		CheckEmail(ctx context.Context, tx *gorm.DB, email string) (entities.User, bool, error)
-		Update(ctx context.Context, tx *gorm.DB, user entities.User) (entities.User, error)
-		Delete(ctx context.Context, tx *gorm.DB, userId string) error
-	}
+type UserRepository interface {
+	Upsert(ctx context.Context, user entities.User) (entities.User, error)
+	FindByID(ctx context.Context, userID uuid.UUID) (entities.User, error)
+	FindByUsername(ctx context.Context, username string) (entities.User, error)
+	FindByIDs(ctx context.Context, userIDs []uuid.UUID) ([]entities.User, error)
+	Search(ctx context.Context, search string, limit int) ([]entities.User, error)
+}
 
-	userRepository struct {
-		db *gorm.DB
-	}
-)
+type userRepository struct {
+	db *gorm.DB
+}
 
 func NewUserRepository(db *gorm.DB) UserRepository {
-	return &userRepository{
-		db: db,
-	}
+	return &userRepository{db: db}
 }
 
-func (r *userRepository) Register(ctx context.Context, tx *gorm.DB, user entities.User) (entities.User, error) {
-	if tx == nil {
-		tx = r.db
-	}
-
-	if err := tx.WithContext(ctx).Create(&user).Error; err != nil {
+func (repository *userRepository) Upsert(ctx context.Context, user entities.User) (entities.User, error) {
+	err := repository.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "id"}},
+		DoUpdates: clause.AssignmentColumns([]string{
+			"first_name",
+			"last_name",
+			"username",
+			"avatar_id",
+			"updated_at",
+		}),
+	}).Create(&user).Error
+	if err != nil {
 		return entities.User{}, err
 	}
 
-	return user, nil
+	return repository.FindByID(ctx, user.ID)
 }
 
-func (r *userRepository) GetUserById(ctx context.Context, tx *gorm.DB, userId string) (entities.User, error) {
-	if tx == nil {
-		tx = r.db
-	}
-
+func (repository *userRepository) FindByID(ctx context.Context, userID uuid.UUID) (entities.User, error) {
 	var user entities.User
-	if err := tx.WithContext(ctx).Where("id = ?", userId).Take(&user).Error; err != nil {
+	if err := repository.db.WithContext(ctx).First(&user, "id = ?", userID).Error; err != nil {
 		return entities.User{}, err
 	}
 
 	return user, nil
 }
 
-func (r *userRepository) GetUserByEmail(ctx context.Context, tx *gorm.DB, email string) (entities.User, error) {
-	if tx == nil {
-		tx = r.db
-	}
-
+func (repository *userRepository) FindByUsername(ctx context.Context, username string) (entities.User, error) {
 	var user entities.User
-	if err := tx.WithContext(ctx).Where("email = ?", email).Take(&user).Error; err != nil {
+	if err := repository.db.WithContext(ctx).First(&user, "username = ?", username).Error; err != nil {
 		return entities.User{}, err
 	}
 
 	return user, nil
 }
 
-func (r *userRepository) CheckEmail(ctx context.Context, tx *gorm.DB, email string) (entities.User, bool, error) {
-	if tx == nil {
-		tx = r.db
+func (repository *userRepository) FindByIDs(ctx context.Context, userIDs []uuid.UUID) ([]entities.User, error) {
+	var users []entities.User
+	if len(userIDs) == 0 {
+		return users, nil
 	}
 
-	var user entities.User
-	if err := tx.WithContext(ctx).Where("email = ?", email).Take(&user).Error; err != nil {
-		return entities.User{}, false, err
+	if err := repository.db.WithContext(ctx).Where("id IN ?", userIDs).Find(&users).Error; err != nil {
+		return nil, err
 	}
 
-	return user, true, nil
+	return users, nil
 }
 
-func (r *userRepository) Update(ctx context.Context, tx *gorm.DB, user entities.User) (entities.User, error) {
-	if tx == nil {
-		tx = r.db
+func (repository *userRepository) Search(ctx context.Context, search string, limit int) ([]entities.User, error) {
+	query := repository.db.WithContext(ctx).Order("username ASC").Limit(limit)
+	if search != "" {
+		pattern := "%" + search + "%"
+		query = query.Where(
+			"first_name ILIKE ? OR last_name ILIKE ? OR username ILIKE ?",
+			pattern,
+			pattern,
+			pattern,
+		)
 	}
 
-	if err := tx.WithContext(ctx).Updates(&user).Error; err != nil {
-		return entities.User{}, err
+	var users []entities.User
+	if err := query.Find(&users).Error; err != nil {
+		return nil, err
 	}
 
-	return user, nil
-}
-
-func (r *userRepository) Delete(ctx context.Context, tx *gorm.DB, userId string) error {
-	if tx == nil {
-		tx = r.db
-	}
-
-	if err := tx.WithContext(ctx).Delete(&entities.User{}, "id = ?", userId).Error; err != nil {
-		return err
-	}
-
-	return nil
+	return users, nil
 }
