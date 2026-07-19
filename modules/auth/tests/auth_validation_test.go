@@ -3,9 +3,9 @@ package tests
 import (
 	"testing"
 
-	"github.com/Caknoooo/go-gin-clean-starter/modules/auth/dto"
-	"github.com/Caknoooo/go-gin-clean-starter/modules/auth/validation"
-	userDto "github.com/Caknoooo/go-gin-clean-starter/modules/user/dto"
+	"github.com/Hieu3z03/chat-api-golang/modules/auth/dto"
+	"github.com/Hieu3z03/chat-api-golang/modules/auth/validation"
+	userDto "github.com/Hieu3z03/chat-api-golang/modules/user/dto"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -4,14 +4,14 @@ import (
 	"log"
 	"os"
 
-	"github.com/Caknoooo/go-gin-clean-starter/middlewares"
-	"github.com/Caknoooo/go-gin-clean-starter/modules/auth"
-	"github.com/Caknoooo/go-gin-clean-starter/modules/user"
-	"github.com/Caknoooo/go-gin-clean-starter/providers"
-	"github.com/Caknoooo/go-gin-clean-starter/script"
+	"github.com/Hieu3z03/chat-api-golang/config"
+	"github.com/Hieu3z03/chat-api-golang/middlewares"
+	"github.com/Hieu3z03/chat-api-golang/modules/auth"
+	"github.com/Hieu3z03/chat-api-golang/modules/user"
+	"github.com/Hieu3z03/chat-api-golang/providers"
+	"github.com/Hieu3z03/chat-api-golang/script"
 	"github.com/samber/do"
 
-	"github.com/common-nighthawk/go-figure"
 	"github.com/gin-gonic/gin"
 )
 
@@ -24,7 +24,7 @@ func args(injector *do.Injector) bool {
 	return true
 }
 
-func run(server *gin.Engine) {
+func run(server *gin.Engine) error {
 	server.Static("/assets", "./assets")
 
 	port := os.Getenv("GOLANG_PORT")
@@ -32,27 +32,25 @@ func run(server *gin.Engine) {
 		port = "8888"
 	}
 
-	var serve string
-	if os.Getenv("APP_ENV") == "localhost" {
-		serve = "0.0.0.0:" + port
-	} else {
-		serve = ":" + port
-	}
-
-	myFigure := figure.NewColorFigure("Caknoo", "", "green", true)
-	myFigure.Print()
-
-	if err := server.Run(serve); err != nil {
-		log.Fatalf("error running server: %v", err)
-	}
+	return server.Run(":" + port)
 }
 
 func main() {
-	var (
-		injector = do.New()
-	)
+	if err := config.LoadEnvironment(); err != nil {
+		log.Fatal(err)
+	}
 
-	providers.RegisterDependencies(injector)
+	injector := do.New()
+	defer func() {
+		if err := injector.Shutdown(); err != nil {
+			log.Printf("shutdown dependencies: %v", err)
+		}
+	}()
+
+	if err := providers.RegisterDependencies(injector); err != nil {
+		log.Printf("initialize dependencies: %v", err)
+		return
+	}
 
 	if !args(injector) {
 		return
@@ -65,5 +63,7 @@ func main() {
 	user.RegisterRoutes(server, injector)
 	auth.RegisterRoutes(server, injector)
 
-	run(server)
+	if err := run(server); err != nil {
+		log.Printf("run server: %v", err)
+	}
 }

@@ -1,20 +1,21 @@
 package script
 
 import (
-	_ "github.com/Caknoooo/go-gin-clean-starter/database/migrations"
 	"log"
 	"os"
 	"strconv"
 	"strings"
 
-	"github.com/Caknoooo/go-gin-clean-starter/database"
-	"github.com/Caknoooo/go-gin-clean-starter/pkg/constants"
+	_ "github.com/Hieu3z03/chat-api-golang/database/migrations"
+
+	"github.com/Hieu3z03/chat-api-golang/database"
+	"github.com/Hieu3z03/chat-api-golang/pkg/constants"
 	"github.com/samber/do"
 	"gorm.io/gorm"
 )
 
 func Commands(injector *do.Injector) bool {
-	db := do.MustInvokeNamed[*gorm.DB](injector, constants.DB)
+	db := do.MustInvokeNamed[*gorm.DB](injector, constants.PostgreSQL)
 
 	var scriptName string
 	var migrationName string

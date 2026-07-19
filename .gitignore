@@ -2,4 +2,9 @@
 storage/
 assets/
 volumes/
+tmp/
+main
+main.exe
+coverage.out
+.cache/
 .idea/

@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Caknoooo/go-gin-clean-starter/modules/auth/service"
-	"github.com/Caknoooo/go-gin-clean-starter/modules/user/dto"
-	"github.com/Caknoooo/go-gin-clean-starter/pkg/utils"
+	"github.com/Hieu3z03/chat-api-golang/modules/auth/service"
+	"github.com/Hieu3z03/chat-api-golang/modules/user/dto"
+	"github.com/Hieu3z03/chat-api-golang/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
 

@@ -1,8 +1,8 @@
 package entities
 
 import (
-	"github.com/Caknoooo/go-gin-clean-starter/pkg/constants"
-	"github.com/Caknoooo/go-gin-clean-starter/pkg/helpers"
+	"github.com/Hieu3z03/chat-api-golang/pkg/constants"
+	"github.com/Hieu3z03/chat-api-golang/pkg/helpers"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -15,7 +15,6 @@ type User struct {
 	Password   string    `gorm:"type:varchar(255);not null" json:"password"`
 	Role       string    `gorm:"type:varchar(50);not null;default:'user'" json:"role"`
 	ImageUrl   string    `gorm:"type:varchar(255)" json:"image_url"`
-	IsVerified bool      `gorm:"default:false" json:"is_verified"`
 
 	Timestamp
 }

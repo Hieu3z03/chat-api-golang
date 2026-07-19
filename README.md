@@ -1,253 +1,137 @@
-# Golang Gin Clean Starter
+# Go Gin Clean Starter
 
-You can join in the development (Open Source). **Let's Go!!!**
+Boilerplate Go API theo mô hình Controller - Service - Repository, chạy trực tiếp trên máy và không phụ thuộc Docker.
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/Caknoooo/go-gin-clean-starter)](https://goreportcard.com/report/github.com/Caknoooo/go-gin-clean-starter) [![Go Reference](https://pkg.go.dev/badge/github.com/Caknoooo/go-gin-clean-starter.svg)](https://pkg.go.dev/github.com/Caknoooo/go-gin-clean-starter) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Release](https://img.shields.io/badge/release-v2.2.0-green.svg)](https://github.com/Caknoooo/go-gin-clean-starter/releases) <img align="right" width="200" height="200" alt="Go Gin Clean Architecture" src="https://github.com/user-attachments/assets/b7e2f353-bb6b-4ef1-88e9-6ab9bf2b8327" />
+## Thành phần giữ lại
 
-[![Go Version](https://img.shields.io/badge/Go-%3E%3D%201.20-blue.svg)](https://golang.org/) [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-%3E%3D%2015.0-blue.svg)](https://www.postgresql.org/) [![Docker](https://img.shields.io/badge/Docker-Supported-blue.svg)](https://www.docker.com/) [![Gin](https://img.shields.io/badge/Gin-Web%20Framework-red.svg)](https://gin-gonic.com/) [![GORM](https://img.shields.io/badge/GORM-ORM-green.svg)](https://gorm.io/)
+- Gin HTTP server
+- Clean architecture theo module
+- PostgreSQL qua GORM
+- MongoDB qua MongoDB Go Driver
+- Dependency injection với `samber/do`
+- Migration, seeder và module generator
+- JWT authentication và CRUD user cơ bản
 
-## Introduction 👋
-> This project implements **Clean Architecture** principles with the Controller–Service–Repository pattern. This approach emphasizes clear separation of responsibilities across different layers in Golang applications. The architecture helps keep the codebase clean, testable, and scalable by dividing application logic into distinct modules with well-defined boundaries.
+Tích hợp SMTP, xác thực email, quên mật khẩu qua email và toàn bộ cấu hình Docker đã được loại bỏ. Trường `email` vẫn là định danh dùng để đăng ký và đăng nhập.
 
-<img width="1485" height="610" alt="Image" src="https://github.com/user-attachments/assets/918adf6d-9dc4-47fa-b9a6-3a10ca1e5242" />
+## Yêu cầu
 
-## Quick Start 🚀
+- Go theo phiên bản trong `go.mod`
+- PostgreSQL đang chạy local; có thể tạo và quản lý database bằng pgAdmin
+- MongoDB đang chạy local hoặc có MongoDB URI truy cập được
 
-### Prerequisites
-- Go Version `>= go 1.20`
-- PostgreSQL Version `>= version 15.0`
+## Cấu hình
 
-### Installation
-1. Clone the repository or **Use This Template**
-   ```bash
-   git clone https://github.com/Caknoooo/go-gin-clean-starter.git
-   ```
-2. Navigate to the project directory:
-   ```bash
-   cd go-gin-clean-starter
-   ```
-3. Copy the example environment file and configure it:
-   ```bash 
-   cp .env.example .env
-   ```
-4. Install dependencies:
-   ```bash
-   make dep
-   ```
+1. Tạo database PostgreSQL, ví dụ `go_gin_clean`, bằng pgAdmin.
+2. Sao chép `.env.example` thành `.env`.
+3. Thay thông tin kết nối và secret:
 
-## Running the Application 🏃‍♂️
+```env
+APP_NAME=go-gin-clean
+GOLANG_PORT=8888
+JWT_SECRET=change_me
 
-There are two ways to run the application:
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASS=change_me
+DB_NAME=go_gin_clean
+DB_SSLMODE=disable
 
-### Option 1: With Docker
-1. Configure `.env` with your PostgreSQL credentials:
-   ```bash
-   DB_HOST=localhost
-   DB_USER=postgres
-   DB_PASS=your_password
-   DB_NAME=your_database
-   DB_PORT=5432
-   ```
-2. Build and start Docker containers:
-   ```bash
-   make init-docker
-   ```
-3. Run migrations and seeders:
-   ```bash
-   make migrate-seed-docker
-   ```
-4. The application will be available at `http://localhost:<port>`
-
-**Docker Migration Commands:**
-```bash
-make migrate-docker                                 # Run migrations in Docker
-make migrate-status-docker                          # Show migration status in Docker
-make migrate-rollback-docker                        # Rollback last batch in Docker
-make migrate-rollback-batch-docker batch=<number>   # Rollback batch in Docker
-make migrate-rollback-all-docker                    # Rollback all in Docker
-make migrate-create-docker name=<name>              # Create migration in Docker
+MONGO_URI=mongodb://localhost:27017
+MONGO_DATABASE=go_gin_clean
 ```
 
-### Option 2: Without Docker
-1. Configure `.env` with your PostgreSQL credentials:
-   ```bash
-   DB_HOST=localhost
-   DB_USER=postgres
-   DB_PASS=your_password
-   DB_NAME=your_database
-   DB_PORT=5432
-   ```
-2. Run the application:
-   ```bash
-   make migrate      # Run migrations
-   make seed         # Run seeders (optional)
-   make migrate-seed # Run Migrations + Seeder
-   make run          # Start the application
-   ```
+File `.env` là tùy chọn. Khi không có file này, ứng dụng dùng địa chỉ local mặc định; password và `JWT_SECRET` vẫn nên được khai báo bằng biến môi trường.
 
-## Available Make Commands 🚀
-The project includes a comprehensive Makefile with the following commands:
+Ứng dụng kiểm tra cả PostgreSQL và MongoDB khi khởi động. PostgreSQL user cần quyền tạo extension `uuid-ossp` trong database đã chọn.
 
-### Development Commands
-```bash
-make dep          # Install and tidy dependencies
-make run          # Run the application locally
-make build        # Build the application binary
-make run-build    # Build and run the application
-```
-
-### Migration Commands
-```bash
-make migrate                                # Run all pending migrations
-make migrate-status                         # Show migration status
-make migrate-rollback                       # Rollback the last batch
-make migrate-rollback-batch batch=<number>  # Rollback specific batch
-make migrate-rollback-all                   # Rollback all migrations
-make migrate-create name=<migration_name>   # Create new migration file
-```
-
-**Migration Examples:**
-```bash
-make migrate                                 # Run migrations
-make migrate-status                          # Check migration status
-make migrate-rollback                        # Rollback last batch
-make migrate-rollback-batch batch=2          # Rollback batch 2
-make migrate-rollback-all                    # Rollback all migrations
-make migrate-create name=create_posts_table  # Create migration with entity
-```
-
-**Note:** When creating a migration with format `create_*_table`, the system will automatically:
-- Create the entity file in `database/entities/`
-- Add the entity to the migration file
-- Add the entity to `database/migration.go` AutoMigrate section
-
-### Module Generation Commands
-```bash
-make module name=<module_name>  # Generate a new module with all necessary files
-```
-
-**Example:**
-```bash
-make module name=product
-```
-
-This command will automatically create a complete module structure including:
-- Controller (`product_controller.go`)
-- Service (`product_service.go`) 
-- Repository (`product_repository.go`)
-- DTO (`product_dto.go`)
-- Validation (`product_validation.go`)
-- Routes (`routes.go`)
-- Test files for all components
-- Query directory (for custom queries)
-
-## Advanced Usage 🔧
-
-### Running Migrations, Seeders, and Scripts
-You can run migrations, seed the database, and execute scripts while keeping the application running:
+## Chạy local
 
 ```bash
-go run cmd/main.go --migrate:run --seed --run --script:example_script
+go mod tidy
+go run ./cmd/main.go --migrate:run
+go run ./cmd/main.go --seed
+go run ./cmd/main.go
 ```
 
-**Available flags:**
-- `--migrate` or `--migrate:run`: Apply all pending migrations
-- `--migrate:status`: Show migration status
-- `--migrate:rollback`: Rollback the last batch
-- `--migrate:rollback <batch_number>`: Rollback specific batch
-- `--migrate:rollback:all`: Rollback all migrations
-- `--migrate:create:<migration_name>`: Create new migration file
-- `--seed`: Seed the database with initial data
-- `--script:example_script`: Run the specified script (replace `example_script` with your script name)
-- `--run`: Keep the application running after executing the commands above
+API mặc định chạy tại `http://localhost:8888`.
 
-### Individual Commands
+Nếu đã cài Air, có thể chạy hot reload bằng:
 
-#### Database Migration
 ```bash
-go run cmd/main.go --migrate:run                        # Run all pending migrations
-go run cmd/main.go --migrate:status                     # Show migration status
-go run cmd/main.go --migrate:rollback                   # Rollback last batch
-go run cmd/main.go --migrate:rollback 2                 # Rollback batch 2
-go run cmd/main.go --migrate:rollback:all               # Rollback all migrations
-go run cmd/main.go --migrate:create:create_posts_table  # Create migration
+air
 ```
 
-**Migration System Features:**
-- **Batch-based migrations**: Similar to Laravel, migrations are grouped in batches
-- **Automatic entity creation**: When creating migration with format `create_*_table`, the system will:
-  - Automatically create entity file in `database/entities/`
-  - Add entity to migration file's AutoMigrate
-  - Add entity to `database/migration.go` AutoMigrate section
-- **Rollback support**: Rollback by batch or rollback all migrations
-- **Status tracking**: View which migrations have been run and their batch numbers
+Air build binary tạm trong `tmp/`, không còn dùng đường dẫn Docker.
 
-#### Database Seeding
+## Lệnh database
+
 ```bash
-go run cmd/main.go --seed
+go run ./cmd/main.go --migrate:run
+go run ./cmd/main.go --migrate:status
+go run ./cmd/main.go --migrate:rollback
+go run ./cmd/main.go --migrate:rollback 2
+go run ./cmd/main.go --migrate:rollback:all
+go run ./cmd/main.go --migrate:create:create_posts_table
+go run ./cmd/main.go --seed
+go run ./cmd/main.go --migrate:run --seed
 ```
-This command will populate the database with initial data using the seeders defined in your application.
 
-#### Script Execution
+Các lệnh tương ứng cũng có trong `Makefile`: `make run`, `make migrate`, `make seed`, `make migrate-seed` và `make test`.
+
+## Sử dụng kết nối database trong module
+
+PostgreSQL:
+
+```go
+db := do.MustInvokeNamed[*gorm.DB](injector, constants.PostgreSQL)
+```
+
+MongoDB:
+
+```go
+db := do.MustInvokeNamed[*mongo.Database](injector, constants.MongoDB)
+```
+
+Hai kết nối được đăng ký trong `providers/core.go` và được đóng khi injector shutdown.
+
+## Cấu trúc chính
+
+```text
+cmd/            điểm khởi động ứng dụng
+config/         cấu hình PostgreSQL, MongoDB và logger
+database/       entity, migration và seeder PostgreSQL
+middlewares/    Gin middleware
+modules/        controller, service, repository, DTO theo domain
+pkg/            helper, constant và utility dùng chung
+providers/      đăng ký dependency injection
+script/         command/script chạy từ CLI
+```
+
+## API base
+
+```text
+POST   /api/auth/register
+POST   /api/auth/login
+POST   /api/auth/refresh
+POST   /api/auth/logout
+GET    /api/user
+GET    /api/user/me
+PUT    /api/user/:id
+DELETE /api/user/:id
+```
+
+Xem `modules/auth/routes.go` và `modules/user/routes.go` để kiểm tra route cùng middleware hiện tại.
+
+## Kiểm tra
+
 ```bash
-go run cmd/main.go --script:example_script
-```
-Replace `example_script` with the actual script name in **script.go** at the script folder.
-
-> **Note:** If you need the application to continue running after performing migrations, seeding, or executing a script, always append the `--run` option.
-
-
-## Logs Feature 📋
-
-The application includes a built-in logging system that allows you to monitor and track system queries. You can access the logs through a modern, user-friendly interface.
-
-### Accessing Logs
-To view the logs:
-1. Make sure the application is running
-2. Open your browser and navigate to:
-```bash
-http://your-domain/logs
+go test ./...
+go vet ./...
+go build ./...
 ```
 
-![Logs Interface](https://github.com/user-attachments/assets/adda0afb-a1e4-4e05-b44e-87225fe63309)
+## License
 
-### Features
-- **Monthly Filtering**: Filter logs by selecting different months
-- **Real-time Refresh**: Instantly refresh logs with the refresh button
-- **Expandable Entries**: Click on any log entry to view its full content
-- **Modern UI**: Clean and responsive interface with glass-morphism design
-
-## 📖 Documentation
-
-### API Documentation
-Explore the available endpoints and their usage in the [Postman Documentation](https://documenter.getpostman.com/view/29665461/2s9YJaZQCG). This documentation provides a comprehensive overview of the API endpoints, including request and response examples.
-
-### Contributing
-We welcome contributions! The repository includes templates for issues and pull requests to standardize contributions and improve the quality of discussions and code reviews.
-
-- **Issue Template**: Helps in reporting bugs or suggesting features by providing a structured format
-- **Pull Request Template**: Guides contributors to provide clear descriptions of changes and testing steps
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 🌟 Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=Caknoooo/go-gin-clean-starter&type=date&legend=top-left)](https://www.star-history.com/#Caknoooo/go-gin-clean-starter&type=date&legend=top-left)
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- [Gin Web Framework](https://gin-gonic.com/)
-- [GORM](https://gorm.io/)
-- [Samber/do](https://github.com/samber/do) for dependency injection
-- [Go Playground Validator](https://github.com/go-playground/validator)
-- [Testify](https://github.com/stretchr/testify) for testing
+MIT, xem `LICENSE`.

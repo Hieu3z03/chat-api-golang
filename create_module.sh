@@ -26,9 +26,9 @@ cat > modules/$MODULE_NAME/controller/${MODULE_NAME}_controller.go << EOF
 package controller
 
 import (
-	"github.com/Caknoooo/go-gin-clean-starter/modules/$MODULE_NAME/service"
-	"github.com/Caknoooo/go-gin-clean-starter/modules/$MODULE_NAME/validation"
-	"github.com/Caknoooo/go-gin-clean-starter/pkg/constants"
+	"github.com/Hieu3z03/chat-api-golang/modules/$MODULE_NAME/service"
+	"github.com/Hieu3z03/chat-api-golang/modules/$MODULE_NAME/validation"
+	"github.com/Hieu3z03/chat-api-golang/pkg/constants"
 	"github.com/samber/do"
 	"gorm.io/gorm"
 )
@@ -59,7 +59,7 @@ cat > modules/$MODULE_NAME/service/${MODULE_NAME}_service.go << EOF
 package service
 
 import (
-	"github.com/Caknoooo/go-gin-clean-starter/modules/$MODULE_NAME/repository"
+	"github.com/Hieu3z03/chat-api-golang/modules/$MODULE_NAME/repository"
 	"gorm.io/gorm"
 )
 
@@ -158,7 +158,7 @@ cat > modules/$MODULE_NAME/routes.go << EOF
 package $MODULE_NAME
 
 import (
-	"github.com/Caknoooo/go-gin-clean-starter/modules/$MODULE_NAME/controller"
+	"github.com/Hieu3z03/chat-api-golang/modules/$MODULE_NAME/controller"
 	"github.com/gin-gonic/gin"
 	"github.com/samber/do"
 )

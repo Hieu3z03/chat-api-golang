@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 
-	"github.com/Caknoooo/go-gin-clean-starter/modules/user/dto"
-	"github.com/Caknoooo/go-gin-clean-starter/modules/user/repository"
+	"github.com/Hieu3z03/chat-api-golang/modules/user/dto"
+	"github.com/Hieu3z03/chat-api-golang/modules/user/repository"
 	"gorm.io/gorm"
 )
 
@@ -42,7 +42,6 @@ func (s *userService) GetUserById(ctx context.Context, userId string) (dto.UserR
 		TelpNumber: user.TelpNumber,
 		Role:       user.Role,
 		ImageUrl:   user.ImageUrl,
-		IsVerified: user.IsVerified,
 	}, nil
 }
 
@@ -73,7 +72,6 @@ func (s *userService) Update(ctx context.Context, req dto.UserUpdateRequest, use
 		TelpNumber: updatedUser.TelpNumber,
 		Role:       updatedUser.Role,
 		Email:      updatedUser.Email,
-		IsVerified: updatedUser.IsVerified,
 	}, nil
 }
 

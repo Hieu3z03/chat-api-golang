@@ -4,29 +4,45 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/joho/godotenv"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
-func RunExtension(db *gorm.DB) {
-	db.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";")
+type PostgreSQLConnection struct {
+	DB *gorm.DB
 }
 
-func SetUpDatabaseConnection() *gorm.DB {
-	err := godotenv.Load(".env")
+func (connection *PostgreSQLConnection) Shutdown() error {
+	db, err := connection.DB.DB()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	dbUser := os.Getenv("DB_USER")
-	dbPass := os.Getenv("DB_PASS")
-	dbHost := os.Getenv("DB_HOST")
-	dbName := os.Getenv("DB_NAME")
-	dbPort := os.Getenv("DB_PORT")
+	return db.Close()
+}
 
-	dsn := fmt.Sprintf("host=%v user=%v password=%v dbname=%v port=%v", dbHost, dbUser, dbPass, dbName, dbPort)
+func RunExtension(db *gorm.DB) error {
+	return db.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";").Error
+}
+
+func SetUpDatabaseConnection() (*PostgreSQLConnection, error) {
+	dbUser := getEnvOrDefault("DB_USER", "postgres")
+	dbPass := getEnvOrDefault("DB_PASS", "")
+	dbHost := getEnvOrDefault("DB_HOST", "localhost")
+	dbName := getEnvOrDefault("DB_NAME", "postgres")
+	dbPort := getEnvOrDefault("DB_PORT", "5432")
+	dbSSLMode := getEnvOrDefault("DB_SSLMODE", "disable")
+
+	dsn := fmt.Sprintf(
+		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
+		dbHost,
+		dbUser,
+		dbPass,
+		dbName,
+		dbPort,
+		dbSSLMode,
+	)
 
 	db, err := gorm.Open(postgres.New(postgres.Config{
 		DSN:                  dsn,
@@ -35,12 +51,15 @@ func SetUpDatabaseConnection() *gorm.DB {
 		Logger: SetupLogger(),
 	})
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("connect to PostgreSQL: %w", err)
 	}
 
-	RunExtension(db)
+	if err := RunExtension(db); err != nil {
+		_ = CloseDatabaseConnection(db)
+		return nil, fmt.Errorf("enable PostgreSQL uuid-ossp extension: %w", err)
+	}
 
-	return db
+	return &PostgreSQLConnection{DB: db}, nil
 }
 
 func SetUpTestDatabaseConnection() *gorm.DB {
@@ -60,7 +79,9 @@ func SetUpTestDatabaseConnection() *gorm.DB {
 		panic(err)
 	}
 
-	RunExtension(db)
+	if err := RunExtension(db); err != nil {
+		panic(err)
+	}
 
 	return db
 }
@@ -88,10 +109,10 @@ func getEnvOrDefault(key, defaultValue string) string {
 	return defaultValue
 }
 
-func CloseDatabaseConnection(db *gorm.DB) {
+func CloseDatabaseConnection(db *gorm.DB) error {
 	dbSQL, err := db.DB()
 	if err != nil {
-		panic(err)
+		return err
 	}
-	dbSQL.Close()
+	return dbSQL.Close()
 }

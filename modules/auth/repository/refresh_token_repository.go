@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/Caknoooo/go-gin-clean-starter/database/entities"
+	"github.com/Hieu3z03/chat-api-golang/database/entities"
 	"gorm.io/gorm"
 )
 

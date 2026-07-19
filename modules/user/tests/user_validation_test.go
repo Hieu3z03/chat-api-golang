@@ -3,8 +3,8 @@ package tests
 import (
 	"testing"
 
-	"github.com/Caknoooo/go-gin-clean-starter/modules/user/dto"
-	"github.com/Caknoooo/go-gin-clean-starter/modules/user/validation"
+	"github.com/Hieu3z03/chat-api-golang/modules/user/dto"
+	"github.com/Hieu3z03/chat-api-golang/modules/user/validation"
 	"github.com/stretchr/testify/assert"
 )
 

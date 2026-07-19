@@ -12,7 +12,6 @@ type User struct {
 	TelpNumber string `json:"telp_number"`
 	Role       string `json:"role"`
 	ImageUrl   string `json:"image_url"`
-	IsVerified bool   `json:"is_verified"`
 }
 
 type UserFilter struct {

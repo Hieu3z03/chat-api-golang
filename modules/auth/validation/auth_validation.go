@@ -1,8 +1,8 @@
 package validation
 
 import (
-	"github.com/Caknoooo/go-gin-clean-starter/modules/auth/dto"
-	userDto "github.com/Caknoooo/go-gin-clean-starter/modules/user/dto"
+	"github.com/Hieu3z03/chat-api-golang/modules/auth/dto"
+	userDto "github.com/Hieu3z03/chat-api-golang/modules/user/dto"
 	"github.com/go-playground/validator/v10"
 )
 
@@ -30,22 +30,6 @@ func (v *AuthValidation) ValidateLoginRequest(req userDto.UserLoginRequest) erro
 }
 
 func (v *AuthValidation) ValidateRefreshTokenRequest(req dto.RefreshTokenRequest) error {
-	return v.validate.Struct(req)
-}
-
-func (v *AuthValidation) ValidateSendPasswordResetRequest(req dto.SendPasswordResetRequest) error {
-	return v.validate.Struct(req)
-}
-
-func (v *AuthValidation) ValidateResetPasswordRequest(req dto.ResetPasswordRequest) error {
-	return v.validate.Struct(req)
-}
-
-func (v *AuthValidation) ValidateSendVerificationEmailRequest(req userDto.SendVerificationEmailRequest) error {
-	return v.validate.Struct(req)
-}
-
-func (v *AuthValidation) ValidateVerifyEmailRequest(req userDto.VerifyEmailRequest) error {
 	return v.validate.Struct(req)
 }
 

@@ -1,8 +1,8 @@
 package migrations
 
 import (
-	"github.com/Caknoooo/go-gin-clean-starter/database"
-	"github.com/Caknoooo/go-gin-clean-starter/database/entities"
+	"github.com/Hieu3z03/chat-api-golang/database"
+	"github.com/Hieu3z03/chat-api-golang/database/entities"
 	"gorm.io/gorm"
 )
 
