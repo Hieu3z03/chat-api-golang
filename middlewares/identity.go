@@ -28,15 +28,18 @@ func RequireIdentityHeaders() gin.HandlerFunc {
 			return
 		}
 
-		roleID, err := uuid.Parse(ctx.GetHeader("x-user-role"))
-		if err != nil {
-			response := utils.BuildResponseFailed(
-				"invalid request identity",
-				"x-user-role header must be a valid UUID",
-				nil,
-			)
-			ctx.AbortWithStatusJSON(http.StatusBadRequest, response)
-			return
+		roleID := uuid.Nil
+		if value := ctx.GetHeader("x-user-role"); value != "" {
+			roleID, err = uuid.Parse(value)
+			if err != nil {
+				response := utils.BuildResponseFailed(
+					"invalid request identity",
+					"x-user-role header must be a valid UUID when provided",
+					nil,
+				)
+				ctx.AbortWithStatusJSON(http.StatusBadRequest, response)
+				return
+			}
 		}
 
 		ctx.Set(identityContextKey, RequestIdentity{

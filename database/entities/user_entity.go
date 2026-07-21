@@ -6,13 +6,10 @@ import (
 )
 
 type User struct {
-	ID        uuid.UUID  `gorm:"type:uuid;primaryKey" json:"id"`
-	FirstName string     `gorm:"type:varchar(100);not null" json:"first_name"`
-	LastName  string     `gorm:"type:varchar(100);not null" json:"last_name"`
-	Username  string     `gorm:"type:varchar(100);uniqueIndex;not null" json:"username"`
-	AvatarID  *uuid.UUID `gorm:"type:uuid" json:"avatar_id,omitempty"`
-
-	Timestamp
+	ID        uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
+	Username  string    `gorm:"type:varchar(100);uniqueIndex;not null" json:"username"`
+	Name      string    `gorm:"type:varchar(200);not null" json:"name"`
+	AvatarURL *string   `gorm:"type:varchar(2048)" json:"avatar_url,omitempty"`
 }
 
 func (user *User) BeforeCreate(_ *gorm.DB) error {

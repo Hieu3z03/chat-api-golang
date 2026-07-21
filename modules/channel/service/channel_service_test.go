@@ -7,6 +7,7 @@ import (
 
 	"github.com/Hieu3z03/chat-api-golang/database/entities"
 	"github.com/Hieu3z03/chat-api-golang/modules/channel/dto"
+	channelRepository "github.com/Hieu3z03/chat-api-golang/modules/channel/repository"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -59,6 +60,15 @@ func (repository *fakeChannelRepository) ListByUser(context.Context, uuid.UUID) 
 
 func (repository *fakeChannelRepository) IsMember(context.Context, uuid.UUID, uuid.UUID) (bool, error) {
 	return true, nil
+}
+
+func (repository *fakeChannelRepository) ListMembersAndMarkRead(
+	context.Context,
+	uuid.UUID,
+	uuid.UUID,
+	int64,
+) ([]channelRepository.ChannelMemberWithUser, error) {
+	return nil, nil
 }
 
 func TestCreateAddsCreatorAndDeduplicatesMembers(t *testing.T) {

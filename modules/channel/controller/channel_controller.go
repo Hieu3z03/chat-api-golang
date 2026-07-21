@@ -40,6 +40,10 @@ func (controller *channelController) Create(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, utils.BuildResponseFailed("failed to create channel", err.Error(), nil))
 		return
 	}
+	if errors.Is(err, dto.ErrChannelAlreadyExists) {
+		ctx.JSON(http.StatusConflict, utils.BuildResponseFailed("failed to create channel", err.Error(), nil))
+		return
+	}
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.BuildResponseFailed("failed to create channel", err.Error(), nil))
 		return

@@ -31,11 +31,18 @@ func (service *userService) Sync(
 	userID uuid.UUID,
 	request dto.SyncUserRequest,
 ) (dto.UserResponse, error) {
-	firstName := strings.TrimSpace(request.FirstName)
-	lastName := strings.TrimSpace(request.LastName)
 	username := strings.TrimSpace(request.Username)
-	if firstName == "" || lastName == "" || username == "" {
+	name := strings.TrimSpace(request.Name)
+	if name == "" || username == "" {
 		return dto.UserResponse{}, dto.ErrInvalidUserProfile
+	}
+
+	var avatarURL *string
+	if request.AvatarURL != nil {
+		trimmed := strings.TrimSpace(*request.AvatarURL)
+		if trimmed != "" {
+			avatarURL = &trimmed
+		}
 	}
 
 	existing, err := service.users.FindByUsername(ctx, username)
@@ -48,10 +55,9 @@ func (service *userService) Sync(
 
 	user, err := service.users.Upsert(ctx, entities.User{
 		ID:        userID,
-		FirstName: firstName,
-		LastName:  lastName,
 		Username:  username,
-		AvatarID:  request.AvatarID,
+		Name:      name,
+		AvatarURL: avatarURL,
 	})
 	if err != nil {
 		return dto.UserResponse{}, err
@@ -89,11 +95,8 @@ func (service *userService) Search(ctx context.Context, search string, limit int
 func toUserResponse(user entities.User) dto.UserResponse {
 	return dto.UserResponse{
 		ID:        user.ID,
-		FirstName: user.FirstName,
-		LastName:  user.LastName,
 		Username:  user.Username,
-		AvatarID:  user.AvatarID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
+		Name:      user.Name,
+		AvatarURL: user.AvatarURL,
 	}
 }

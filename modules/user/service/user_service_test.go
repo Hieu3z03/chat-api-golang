@@ -36,34 +36,32 @@ func (repository *fakeUserRepository) Search(context.Context, string, int) ([]en
 	return nil, nil
 }
 
-func TestSyncStoresFirstAndLastName(t *testing.T) {
+func TestSyncStoresMinimalChatProfile(t *testing.T) {
 	repository := &fakeUserRepository{}
 	service := NewUserService(repository)
 	userID := uuid.New()
 
 	response, err := service.Sync(context.Background(), userID, dto.SyncUserRequest{
-		FirstName: "  Hieu ",
-		LastName:  " Nguyen  ",
-		Username:  " hieu ",
+		Name:     "  Hieu Nguyen  ",
+		Username: " hieu ",
 	})
 	if err != nil {
 		t.Fatalf("sync user: %v", err)
 	}
-	if repository.upserted.FirstName != "Hieu" || repository.upserted.LastName != "Nguyen" {
-		t.Fatalf("names were not normalized before persistence")
+	if repository.upserted.Name != "Hieu Nguyen" {
+		t.Fatalf("name was not normalized before persistence")
 	}
 	if response.ID != userID || response.Username != "hieu" {
 		t.Fatalf("unexpected sync response: %+v", response)
 	}
 }
 
-func TestSyncRejectsBlankLastName(t *testing.T) {
+func TestSyncRejectsBlankName(t *testing.T) {
 	service := NewUserService(&fakeUserRepository{})
 
 	_, err := service.Sync(context.Background(), uuid.New(), dto.SyncUserRequest{
-		FirstName: "Hieu",
-		LastName:  "   ",
-		Username:  "hieu",
+		Name:     "   ",
+		Username: "hieu",
 	})
 	if !errors.Is(err, dto.ErrInvalidUserProfile) {
 		t.Fatalf("expected ErrInvalidUserProfile, got %v", err)

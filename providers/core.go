@@ -12,9 +12,12 @@ import (
 	messageController "github.com/Hieu3z03/chat-api-golang/modules/message/controller"
 	messageRepository "github.com/Hieu3z03/chat-api-golang/modules/message/repository"
 	messageService "github.com/Hieu3z03/chat-api-golang/modules/message/service"
+	realtimeController "github.com/Hieu3z03/chat-api-golang/modules/realtime/controller"
+	realtimeService "github.com/Hieu3z03/chat-api-golang/modules/realtime/service"
 	userController "github.com/Hieu3z03/chat-api-golang/modules/user/controller"
 	userRepository "github.com/Hieu3z03/chat-api-golang/modules/user/repository"
 	userService "github.com/Hieu3z03/chat-api-golang/modules/user/service"
+	"github.com/Hieu3z03/chat-api-golang/pkg/centrifugo"
 	"github.com/Hieu3z03/chat-api-golang/pkg/constants"
 	"github.com/samber/do"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -61,7 +64,7 @@ func RegisterDependencies(injector *do.Injector) error {
 	channels := channelRepository.NewChannelRepository(postgres)
 	messages := messageRepository.NewMessageRepository(mongodb)
 
-	indexContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	indexContext, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	if err := messages.EnsureIndexes(indexContext); err != nil {
 		return fmt.Errorf("ensure MongoDB message indexes: %w", err)
@@ -69,7 +72,14 @@ func RegisterDependencies(injector *do.Injector) error {
 
 	userUseCases := userService.NewUserService(users)
 	channelUseCases := channelService.NewChannelService(channels, users)
-	messageUseCases := messageService.NewMessageService(messages, channelUseCases)
+	centrifugoSettings := config.LoadCentrifugoSettings()
+	centrifugoClient := centrifugo.NewClient(
+		centrifugoSettings.APIURL,
+		centrifugoSettings.APIKey,
+		centrifugoSettings.TokenHMACSecret,
+	)
+	messageUseCases := messageService.NewMessageService(messages, channelUseCases, centrifugoClient)
+	realtimeUseCases := realtimeService.NewRealtimeService(centrifugoClient)
 
 	do.Provide(injector, func(i *do.Injector) (userController.UserController, error) {
 		return userController.NewUserController(userUseCases), nil
@@ -79,6 +89,9 @@ func RegisterDependencies(injector *do.Injector) error {
 	})
 	do.Provide(injector, func(i *do.Injector) (messageController.MessageController, error) {
 		return messageController.NewMessageController(messageUseCases), nil
+	})
+	do.Provide(injector, func(i *do.Injector) (realtimeController.RealtimeController, error) {
+		return realtimeController.NewRealtimeController(realtimeUseCases), nil
 	})
 
 	return nil

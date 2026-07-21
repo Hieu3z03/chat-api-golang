@@ -29,11 +29,9 @@ func (repository *userRepository) Upsert(ctx context.Context, user entities.User
 	err := repository.db.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "id"}},
 		DoUpdates: clause.AssignmentColumns([]string{
-			"first_name",
-			"last_name",
 			"username",
-			"avatar_id",
-			"updated_at",
+			"name",
+			"avatar_url",
 		}),
 	}).Create(&user).Error
 	if err != nil {
@@ -79,8 +77,7 @@ func (repository *userRepository) Search(ctx context.Context, search string, lim
 	if search != "" {
 		pattern := "%" + search + "%"
 		query = query.Where(
-			"first_name ILIKE ? OR last_name ILIKE ? OR username ILIKE ?",
-			pattern,
+			"name ILIKE ? OR username ILIKE ?",
 			pattern,
 			pattern,
 		)

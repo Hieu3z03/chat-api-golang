@@ -8,6 +8,7 @@ import (
 	"github.com/Hieu3z03/chat-api-golang/middlewares"
 	"github.com/Hieu3z03/chat-api-golang/modules/channel"
 	"github.com/Hieu3z03/chat-api-golang/modules/message"
+	"github.com/Hieu3z03/chat-api-golang/modules/realtime"
 	"github.com/Hieu3z03/chat-api-golang/modules/user"
 	"github.com/Hieu3z03/chat-api-golang/providers"
 	"github.com/Hieu3z03/chat-api-golang/script"
@@ -64,6 +65,7 @@ func main() {
 	user.RegisterRoutes(server, injector)
 	channel.RegisterRoutes(server, injector)
 	message.RegisterRoutes(server, injector)
+	realtime.RegisterRoutes(server, injector)
 
 	if err := run(server); err != nil {
 		log.Printf("run server: %v", err)

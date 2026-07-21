@@ -4,32 +4,33 @@ Chat service viết bằng Gin theo cấu trúc controller - service - repositor
 
 ## Identity contract
 
-Chat service không xác thực JWT và không đọc header `Authorization`. Upstream gateway/auth service truyền hai header tin cậy:
+Chat service không xác thực JWT và không đọc header `Authorization`. Client truyền `x-user-id`; `x-user-role` là tùy chọn cho frontend development:
 
 ```text
 x-user-id: <user UUID>
-x-user-role: <role UUID>
+x-user-role: <role UUID, optional>
 ```
 
-Middleware chỉ kiểm tra hai giá trị là UUID hợp lệ rồi đưa vào request context. `x-user-role` chưa được lưu vào database; nó được giữ trong context cho các rule nghiệp vụ sau này.
+Middleware luôn kiểm tra `x-user-id` là UUID hợp lệ. Nếu có `x-user-role`, giá trị này cũng phải là UUID hợp lệ; role chưa được lưu vào database.
 
 ## Data model
 
 PostgreSQL:
 
-- `users`: `id`, `first_name`, `last_name`, `username`, `avatar_id`, timestamps
+- `users`: `id`, `username`, `name`, `avatar_url`
 - `channels`: `id`, `name`, `created_by`, timestamps
-- `channel_members`: `channel_id`, `user_id`, `joined_at`
+- `channel_members`: `channel_id`, `user_id`, `joined_at`, `last_read_sequence`, `last_read_at`
 
 MongoDB collection `messages`:
 
 - `_id`
 - `channel_id`
 - `user_id`
+- `sequence`: số thứ tự tăng dần trong từng channel
 - `content`: JSON object bắt buộc có `type`
 - `created_at`
 
-Chat service chỉ lưu `avatar_id`; metadata/file avatar thuộc file service.
+Collection nội bộ `message_counters` cấp `sequence` atomically theo channel. Chat service chỉ lưu URL avatar cần để hiển thị chat.
 
 ## Cách hệ thống hoạt động
 
@@ -37,7 +38,7 @@ Chat service chỉ lưu `avatar_id`; metadata/file avatar thuộc file service.
 2. Chat service chỉ đọc header; không kiểm tra token và không lưu password.
 3. Hồ sơ user được đồng bộ vào PostgreSQL qua `PUT /api/users/me`.
 4. Khi tạo channel, service lấy creator từ `x-user-id`, kiểm tra các user đã tồn tại local rồi ghi `channels` và `channel_members` trong một transaction PostgreSQL.
-5. Khi gửi/đọc message, service kiểm tra `channel_members` trong PostgreSQL trước, sau đó ghi/đọc collection `messages` trong MongoDB.
+5. Khi gửi message, service kiểm tra membership rồi cấp `sequence` và ghi MongoDB. Khi đọc, service lấy messages một lần, cập nhật read pointer và lấy toàn bộ member + user trong một câu SQL, sau đó dựng `seen_by` trong Go.
 6. `content` của message linh hoạt theo `type`; chat service chỉ giữ ID của tài nguyên thuộc service khác.
 
 ## Cấu hình local
@@ -69,6 +70,51 @@ go run ./cmd/main.go
 
 Server mặc định chạy tại `http://localhost:8888`.
 
+## Chạy bằng Docker Compose
+
+Docker Compose chỉ khởi động Centrifugo và backend Go. Backend dùng thông tin PostgreSQL và MongoDB có sẵn trong `.env`.
+
+```powershell
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+docker compose up --build -d
+docker compose ps
+```
+
+Nếu database chạy trên cùng máy với Docker, Compose tự dùng `host.docker.internal`. Có thể ghi rõ hoặc đổi sang địa chỉ database server khác trong `.env` bằng:
+
+```env
+DOCKER_DB_HOST=host.docker.internal
+DOCKER_MONGO_URI=mongodb://host.docker.internal:27017
+```
+
+Nếu database nằm trên server khác, dùng hostname hoặc IP mà container truy cập được. Có thể chạy migration thủ công bằng:
+
+```powershell
+docker compose run --rm backend --migrate:run
+```
+
+Các endpoint local:
+
+- Backend API: `http://localhost:8888`
+- Centrifugo WebSocket: `ws://localhost:8000/connection/websocket`
+- Centrifugo admin UI: `http://localhost:8000` (dùng `CENTRIFUGO_ADMIN_PASSWORD` trong `.env`)
+
+Xem log và dừng stack:
+
+```powershell
+docker compose logs -f backend centrifugo
+docker compose down
+```
+
+Config Centrifugo tại `deploy/centrifugo/config.json` đang cho phép mọi origin để tiện phát triển local. Khi deploy cần giới hạn `allowed_origins` và thay toàn bộ secret `change_me_*`. Backend cấp JWT cho protected channel `$personal_<user-id>` và publish event `message_added` tới personal channel của từng thành viên.
+
+Frontend lấy token realtime qua:
+
+```text
+GET /api/realtime/connection-token
+GET /api/realtime/subscription-token?channel=$personal_<user-id>
+```
+
 ## API
 
 Các ví dụ dùng hai UUID mẫu:
@@ -89,10 +135,9 @@ x-user-id: 11111111-1111-4111-8111-111111111111
 x-user-role: aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa
 
 {
-  "first_name": "Hieu",
-  "last_name": "Nguyen",
   "username": "hieu",
-  "avatar_id": null
+  "name": "Hieu Nguyen",
+  "avatar_url": null
 }
 ```
 
@@ -170,6 +215,8 @@ GET /api/channels/:channel_id/messages?limit=50
 GET /api/channels/:channel_id/messages?limit=50&before=2026-07-19T10:30:00Z
 ```
 
+Mỗi message trả về có `sequence` và `seen_by`. Khi GET thành công, `last_read_sequence` của người gọi được tăng đến sequence lớn nhất trong page (không bao giờ giảm); một member được đưa vào `seen_by` khi `last_read_sequence >= message.sequence`.
+
 ## Test end-to-end bằng PowerShell
 
 Chạy migration và server trước:
@@ -208,10 +255,9 @@ $headers2 = @{
 
 ```powershell
 $user1Body = @{
-  first_name = "Hieu"
-  last_name = "Nguyen"
   username = "hieu"
-  avatar_id = $null
+  name = "Hieu Nguyen"
+  avatar_url = $null
 } | ConvertTo-Json
 
 Invoke-RestMethod `
@@ -221,10 +267,9 @@ Invoke-RestMethod `
   -Body $user1Body
 
 $user2Body = @{
-  first_name = "An"
-  last_name = "Tran"
   username = "an"
-  avatar_id = $null
+  name = "An Tran"
+  avatar_url = $null
 } | ConvertTo-Json
 
 Invoke-RestMethod `

@@ -24,6 +24,11 @@ func TestRequireIdentityHeaders(t *testing.T) {
 			wantStatus: http.StatusNoContent,
 		},
 		{
+			name:       "role id is optional for development clients",
+			userID:     "11111111-1111-4111-8111-111111111111",
+			wantStatus: http.StatusNoContent,
+		},
+		{
 			name:       "missing user id",
 			roleID:     "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
 			wantStatus: http.StatusBadRequest,

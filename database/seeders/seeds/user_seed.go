@@ -36,11 +36,9 @@ func ListUserSeeder(db *gorm.DB) error {
 	return db.Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "id"}},
 		DoUpdates: clause.AssignmentColumns([]string{
-			"first_name",
-			"last_name",
 			"username",
-			"avatar_id",
-			"updated_at",
+			"name",
+			"avatar_url",
 		}),
 	}).Create(&listUser).Error
 }

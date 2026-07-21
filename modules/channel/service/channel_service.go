@@ -18,6 +18,11 @@ type ChannelService interface {
 	Get(ctx context.Context, userID, channelID uuid.UUID) (dto.ChannelResponse, error)
 	List(ctx context.Context, userID uuid.UUID) ([]dto.ChannelResponse, error)
 	EnsureMember(ctx context.Context, channelID, userID uuid.UUID) error
+	ListMembersAndMarkRead(
+		ctx context.Context,
+		channelID, userID uuid.UUID,
+		lastReadSequence int64,
+	) ([]dto.ChannelMemberReadState, error)
 }
 
 type channelService struct {
@@ -59,6 +64,9 @@ func (service *channelService) Create(
 		CreatedBy: creatorID,
 	}, memberIDs)
 	if err != nil {
+		if errors.Is(err, dto.ErrChannelAlreadyExists) {
+			return dto.ChannelResponse{}, dto.ErrChannelAlreadyExists
+		}
 		return dto.ChannelResponse{}, err
 	}
 
@@ -111,6 +119,36 @@ func (service *channelService) EnsureMember(ctx context.Context, channelID, user
 	return nil
 }
 
+func (service *channelService) ListMembersAndMarkRead(
+	ctx context.Context,
+	channelID, userID uuid.UUID,
+	lastReadSequence int64,
+) ([]dto.ChannelMemberReadState, error) {
+	members, err := service.channels.ListMembersAndMarkRead(ctx, channelID, userID, lastReadSequence)
+	if err != nil {
+		return nil, err
+	}
+	if len(members) == 0 {
+		return nil, dto.ErrNotChannelMember
+	}
+
+	result := make([]dto.ChannelMemberReadState, 0, len(members))
+	for _, member := range members {
+		result = append(result, dto.ChannelMemberReadState{
+			User: dto.ChannelUserResponse{
+				ID:        member.UserID,
+				Username:  member.Username,
+				Name:      member.Name,
+				AvatarURL: member.AvatarURL,
+			},
+			LastReadSequence: member.LastReadSequence,
+			LastReadAt:       member.LastReadAt,
+		})
+	}
+
+	return result, nil
+}
+
 func uniqueUserIDs(creatorID uuid.UUID, requested []uuid.UUID) []uuid.UUID {
 	seen := map[uuid.UUID]struct{}{creatorID: {}}
 	result := []uuid.UUID{creatorID}
@@ -135,10 +173,9 @@ func toChannelResponse(channel entities.Channel) dto.ChannelResponse {
 	for _, member := range channel.Members {
 		members = append(members, dto.ChannelUserResponse{
 			ID:        member.User.ID,
-			FirstName: member.User.FirstName,
-			LastName:  member.User.LastName,
 			Username:  member.User.Username,
-			AvatarID:  member.User.AvatarID,
+			Name:      member.User.Name,
+			AvatarURL: member.User.AvatarURL,
 		})
 	}
 

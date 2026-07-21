@@ -26,9 +26,11 @@ func (channel *Channel) BeforeCreate(_ *gorm.DB) error {
 }
 
 type ChannelMember struct {
-	ChannelID uuid.UUID `gorm:"type:uuid;primaryKey" json:"channel_id"`
-	UserID    uuid.UUID `gorm:"type:uuid;primaryKey" json:"user_id"`
-	JoinedAt  time.Time `gorm:"type:timestamp with time zone;not null;autoCreateTime" json:"joined_at"`
-	Channel   Channel   `gorm:"foreignKey:ChannelID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"-"`
-	User      User      `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"user,omitempty"`
+	ChannelID        uuid.UUID  `gorm:"type:uuid;primaryKey" json:"channel_id"`
+	UserID           uuid.UUID  `gorm:"type:uuid;primaryKey" json:"user_id"`
+	JoinedAt         time.Time  `gorm:"not null;autoCreateTime" json:"joined_at"`
+	LastReadSequence int64      `gorm:"not null;default:0" json:"last_read_sequence"`
+	LastReadAt       *time.Time `json:"last_read_at,omitempty"`
+	Channel          Channel    `gorm:"foreignKey:ChannelID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"-"`
+	User             User       `gorm:"foreignKey:UserID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE" json:"user,omitempty"`
 }

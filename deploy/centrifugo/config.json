@@ -1,0 +1,16 @@
+{
+  "client": {
+    "token": {
+      "hmac_secret_key": "change_me_centrifugo_token_secret"
+    },
+    "allowed_origins": ["*"]
+  },
+  "http_api": {
+    "key": "change_me_centrifugo_api_key"
+  },
+  "admin": {
+    "password": "change_me_admin",
+    "secret": "change_me_centrifugo_admin_secret",
+    "enabled": true
+  }
+}

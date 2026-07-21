@@ -1,0 +1,15 @@
+.git
+.github
+.agents
+.env
+.env.*
+!.env.example
+.idea
+.cache
+tmp
+volumes
+storage
+coverage.out
+main
+main.exe
+*.log

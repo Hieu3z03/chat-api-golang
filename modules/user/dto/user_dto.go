@@ -2,7 +2,6 @@ package dto
 
 import (
 	"errors"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -10,22 +9,18 @@ import (
 var (
 	ErrUserNotFound       = errors.New("user not found in chat service")
 	ErrUsernameTaken      = errors.New("username is already used by another user")
-	ErrInvalidUserProfile = errors.New("first_name, last_name and username cannot be blank")
+	ErrInvalidUserProfile = errors.New("name and username cannot be blank")
 )
 
 type SyncUserRequest struct {
-	FirstName string     `json:"first_name" binding:"required,min=1,max=100"`
-	LastName  string     `json:"last_name" binding:"required,min=1,max=100"`
-	Username  string     `json:"username" binding:"required,min=1,max=100"`
-	AvatarID  *uuid.UUID `json:"avatar_id"`
+	Username  string  `json:"username" binding:"required,min=1,max=100"`
+	Name      string  `json:"name" binding:"required,min=1,max=200"`
+	AvatarURL *string `json:"avatar_url" binding:"omitempty,max=2048"`
 }
 
 type UserResponse struct {
-	ID        uuid.UUID  `json:"id"`
-	FirstName string     `json:"first_name"`
-	LastName  string     `json:"last_name"`
-	Username  string     `json:"username"`
-	AvatarID  *uuid.UUID `json:"avatar_id,omitempty"`
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
+	ID        uuid.UUID `json:"id"`
+	Username  string    `json:"username"`
+	Name      string    `json:"name"`
+	AvatarURL *string   `json:"avatar_url,omitempty"`
 }
