@@ -1,8 +1,10 @@
 package service
 
 import (
+	"context"
 	"errors"
 
+	appLogger "github.com/Hieu3z03/chat-api-golang/pkg/logger"
 	"github.com/google/uuid"
 )
 
@@ -16,8 +18,8 @@ type TokenIssuer interface {
 }
 
 type RealtimeService interface {
-	ConnectionToken(userID uuid.UUID) (string, error)
-	SubscriptionToken(userID uuid.UUID, channel string) (string, error)
+	ConnectionToken(ctx context.Context, userID uuid.UUID) (string, error)
+	SubscriptionToken(ctx context.Context, userID uuid.UUID, channel string) (string, error)
 }
 
 type realtimeService struct {
@@ -32,11 +34,15 @@ func PersonalChannel(userID uuid.UUID) string {
 	return personalChannelPrefix + userID.String()
 }
 
-func (service *realtimeService) ConnectionToken(userID uuid.UUID) (string, error) {
+func (service *realtimeService) ConnectionToken(ctx context.Context, userID uuid.UUID) (string, error) {
+	defer appLogger.Measure(ctx, "RealtimeService.ConnectionToken")()
+
 	return service.tokens.ConnectionToken(userID)
 }
 
-func (service *realtimeService) SubscriptionToken(userID uuid.UUID, channel string) (string, error) {
+func (service *realtimeService) SubscriptionToken(ctx context.Context, userID uuid.UUID, channel string) (string, error) {
+	defer appLogger.Measure(ctx, "RealtimeService.SubscriptionToken")()
+
 	if channel != PersonalChannel(userID) {
 		return "", ErrChannelAccessDenied
 	}

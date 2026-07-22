@@ -64,6 +64,29 @@ func TestPublishUsesCentrifugoHTTPAPI(t *testing.T) {
 	}
 }
 
+func TestPingUsesCentrifugoInfoCommand(t *testing.T) {
+	var requestBody map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if err := json.NewDecoder(request.Body).Decode(&requestBody); err != nil {
+			t.Fatalf("decode request: %v", err)
+		}
+		response.Header().Set("Content-Type", "application/json")
+		_, _ = response.Write([]byte(`{"result":{"nodes":[]}}`))
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, "api-key", "secret")
+	if err := client.Ping(context.Background()); err != nil {
+		t.Fatalf("ping: %v", err)
+	}
+	if requestBody["method"] != "info" {
+		t.Fatalf("unexpected method: %v", requestBody["method"])
+	}
+	if _, exists := requestBody["params"]; exists {
+		t.Fatalf("info command must not include params: %#v", requestBody)
+	}
+}
+
 func parseTokenClaims(t *testing.T, tokenString, secret string) jwt.MapClaims {
 	t.Helper()
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {

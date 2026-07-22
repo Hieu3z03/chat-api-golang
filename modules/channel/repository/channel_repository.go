@@ -7,6 +7,7 @@ import (
 
 	"github.com/Hieu3z03/chat-api-golang/database/entities"
 	"github.com/Hieu3z03/chat-api-golang/modules/channel/dto"
+	appLogger "github.com/Hieu3z03/chat-api-golang/pkg/logger"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -47,6 +48,8 @@ func (repository *channelRepository) Create(
 	channel entities.Channel,
 	memberIDs []uuid.UUID,
 ) (entities.Channel, error) {
+	defer appLogger.Measure(ctx, "ChannelRepository.Create")()
+
 	if len(memberIDs) == 0 {
 		return entities.Channel{}, gorm.ErrRecordNotFound
 	}
@@ -123,6 +126,8 @@ func (repository *channelRepository) Create(
 }
 
 func (repository *channelRepository) FindByID(ctx context.Context, channelID uuid.UUID) (entities.Channel, error) {
+	defer appLogger.Measure(ctx, "ChannelRepository.FindByID")()
+
 	var channel entities.Channel
 	err := repository.db.WithContext(ctx).
 		Preload("Creator").
@@ -137,6 +142,8 @@ func (repository *channelRepository) FindByID(ctx context.Context, channelID uui
 }
 
 func (repository *channelRepository) ListByUser(ctx context.Context, userID uuid.UUID) ([]entities.Channel, error) {
+	defer appLogger.Measure(ctx, "ChannelRepository.ListByUser")()
+
 	var channels []entities.Channel
 	err := repository.db.WithContext(ctx).
 		Joins("JOIN channel_members ON channel_members.channel_id = channels.id").
@@ -158,6 +165,8 @@ func (repository *channelRepository) IsMember(
 	channelID uuid.UUID,
 	userID uuid.UUID,
 ) (bool, error) {
+	defer appLogger.Measure(ctx, "ChannelRepository.IsMember")()
+
 	var count int64
 	err := repository.db.WithContext(ctx).
 		Model(&entities.ChannelMember{}).
@@ -172,6 +181,8 @@ func (repository *channelRepository) ListMembersAndMarkRead(
 	channelID, userID uuid.UUID,
 	lastReadSequence int64,
 ) ([]ChannelMemberWithUser, error) {
+	defer appLogger.Measure(ctx, "ChannelRepository.ListMembersAndMarkRead")()
+
 	const query = `
 WITH updated_member AS (
 	UPDATE channel_members

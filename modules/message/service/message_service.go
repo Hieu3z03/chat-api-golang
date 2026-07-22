@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"log"
 	"strings"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/Hieu3z03/chat-api-golang/modules/message/model"
 	"github.com/Hieu3z03/chat-api-golang/modules/message/repository"
 	realtimeService "github.com/Hieu3z03/chat-api-golang/modules/realtime/service"
+	appLogger "github.com/Hieu3z03/chat-api-golang/pkg/logger"
 	"github.com/google/uuid"
 )
 
@@ -64,6 +64,8 @@ func (service *messageService) Create(
 	userID uuid.UUID,
 	request dto.CreateMessageRequest,
 ) (dto.MessageResponse, error) {
+	defer appLogger.Measure(ctx, "MessageService.Create")()
+
 	channel, err := service.channels.Get(ctx, userID, channelID)
 	if err != nil {
 		return dto.MessageResponse{}, err
@@ -105,7 +107,11 @@ func (service *messageService) publishMessageCreated(
 	for _, member := range members {
 		channel := realtimeService.PersonalChannel(member.ID)
 		if err := service.publisher.Publish(ctx, channel, event); err != nil {
-			log.Printf("publish message %s to %s: %v", message.ID, channel, err)
+			appLogger.Log(ctx).Error().Err(err).
+				Str("component", "service").
+				Str("message_id", message.ID).
+				Str("channel", channel).
+				Msg("publish message")
 		}
 	}
 }
@@ -117,6 +123,8 @@ func (service *messageService) List(
 	limit int64,
 	before *time.Time,
 ) ([]dto.MessageResponse, error) {
+	defer appLogger.Measure(ctx, "MessageService.List")()
+
 	messages, err := service.messages.ListByChannel(ctx, channelID.String(), limit, before)
 	if err != nil {
 		return nil, err

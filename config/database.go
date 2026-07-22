@@ -1,9 +1,12 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"time"
 
+	appLogger "github.com/Hieu3z03/chat-api-golang/pkg/logger"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -12,6 +15,8 @@ import (
 type PostgreSQLConnection struct {
 	DB *gorm.DB
 }
+
+const postgreSQLConnectionTimeout = 10 * time.Second
 
 func (connection *PostgreSQLConnection) Shutdown() error {
 	db, err := connection.DB.DB()
@@ -44,10 +49,20 @@ func SetUpDatabaseConnection() (*PostgreSQLConnection, error) {
 		DSN:                  dsn,
 		PreferSimpleProtocol: true,
 	}), &gorm.Config{
-		Logger: SetupLogger(),
+		Logger: appLogger.NewGORM(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("connect to PostgreSQL: %w", err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("get PostgreSQL connection pool: %w", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), postgreSQLConnectionTimeout)
+	defer cancel()
+	if err := sqlDB.PingContext(ctx); err != nil {
+		_ = sqlDB.Close()
+		return nil, fmt.Errorf("ping PostgreSQL: %w", err)
 	}
 
 	return &PostgreSQLConnection{DB: db}, nil

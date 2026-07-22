@@ -9,6 +9,7 @@ import (
 	"github.com/Hieu3z03/chat-api-golang/modules/channel/dto"
 	channelRepository "github.com/Hieu3z03/chat-api-golang/modules/channel/repository"
 	userRepository "github.com/Hieu3z03/chat-api-golang/modules/user/repository"
+	appLogger "github.com/Hieu3z03/chat-api-golang/pkg/logger"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -45,6 +46,8 @@ func (service *channelService) Create(
 	creatorID uuid.UUID,
 	request dto.CreateChannelRequest,
 ) (dto.ChannelResponse, error) {
+	defer appLogger.Measure(ctx, "ChannelService.Create")()
+
 	name := strings.TrimSpace(request.Name)
 	if name == "" {
 		return dto.ChannelResponse{}, dto.ErrInvalidChannelName
@@ -78,6 +81,8 @@ func (service *channelService) Get(
 	userID uuid.UUID,
 	channelID uuid.UUID,
 ) (dto.ChannelResponse, error) {
+	defer appLogger.Measure(ctx, "ChannelService.Get")()
+
 	if err := service.EnsureMember(ctx, channelID, userID); err != nil {
 		return dto.ChannelResponse{}, err
 	}
@@ -94,6 +99,8 @@ func (service *channelService) Get(
 }
 
 func (service *channelService) List(ctx context.Context, userID uuid.UUID) ([]dto.ChannelResponse, error) {
+	defer appLogger.Measure(ctx, "ChannelService.List")()
+
 	channels, err := service.channels.ListByUser(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -108,6 +115,8 @@ func (service *channelService) List(ctx context.Context, userID uuid.UUID) ([]dt
 }
 
 func (service *channelService) EnsureMember(ctx context.Context, channelID, userID uuid.UUID) error {
+	defer appLogger.Measure(ctx, "ChannelService.EnsureMember")()
+
 	isMember, err := service.channels.IsMember(ctx, channelID, userID)
 	if err != nil {
 		return err
@@ -124,6 +133,8 @@ func (service *channelService) ListMembersAndMarkRead(
 	channelID, userID uuid.UUID,
 	lastReadSequence int64,
 ) ([]dto.ChannelMemberReadState, error) {
+	defer appLogger.Measure(ctx, "ChannelService.ListMembersAndMarkRead")()
+
 	members, err := service.channels.ListMembersAndMarkRead(ctx, channelID, userID, lastReadSequence)
 	if err != nil {
 		return nil, err

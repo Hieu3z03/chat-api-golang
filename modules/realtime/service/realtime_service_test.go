@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/uuid"
@@ -25,7 +26,7 @@ func TestSubscriptionTokenOnlyAllowsCurrentUsersPersonalChannel(t *testing.T) {
 	service := NewRealtimeService(issuer)
 	personalChannel := PersonalChannel(userID)
 
-	token, err := service.SubscriptionToken(userID, personalChannel)
+	token, err := service.SubscriptionToken(context.Background(), userID, personalChannel)
 	if err != nil {
 		t.Fatalf("issue subscription token: %v", err)
 	}
@@ -33,7 +34,7 @@ func TestSubscriptionTokenOnlyAllowsCurrentUsersPersonalChannel(t *testing.T) {
 		t.Fatalf("unexpected token result: token=%q channel=%q", token, issuer.subscriptionChannel)
 	}
 
-	if _, err := service.SubscriptionToken(userID, "$personal_"+uuid.NewString()); err != ErrChannelAccessDenied {
+	if _, err := service.SubscriptionToken(context.Background(), userID, "$personal_"+uuid.NewString()); err != ErrChannelAccessDenied {
 		t.Fatalf("expected ErrChannelAccessDenied, got %v", err)
 	}
 }

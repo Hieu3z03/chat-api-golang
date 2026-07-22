@@ -8,6 +8,7 @@ import (
 	"github.com/Hieu3z03/chat-api-golang/database/entities"
 	"github.com/Hieu3z03/chat-api-golang/modules/user/dto"
 	"github.com/Hieu3z03/chat-api-golang/modules/user/repository"
+	appLogger "github.com/Hieu3z03/chat-api-golang/pkg/logger"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -31,6 +32,8 @@ func (service *userService) Sync(
 	userID uuid.UUID,
 	request dto.SyncUserRequest,
 ) (dto.UserResponse, error) {
+	defer appLogger.Measure(ctx, "UserService.Sync")()
+
 	username := strings.TrimSpace(request.Username)
 	name := strings.TrimSpace(request.Name)
 	if name == "" || username == "" {
@@ -67,6 +70,8 @@ func (service *userService) Sync(
 }
 
 func (service *userService) GetByID(ctx context.Context, userID uuid.UUID) (dto.UserResponse, error) {
+	defer appLogger.Measure(ctx, "UserService.GetByID")()
+
 	user, err := service.users.FindByID(ctx, userID)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return dto.UserResponse{}, dto.ErrUserNotFound
@@ -79,6 +84,8 @@ func (service *userService) GetByID(ctx context.Context, userID uuid.UUID) (dto.
 }
 
 func (service *userService) Search(ctx context.Context, search string, limit int) ([]dto.UserResponse, error) {
+	defer appLogger.Measure(ctx, "UserService.Search")()
+
 	users, err := service.users.Search(ctx, strings.TrimSpace(search), limit)
 	if err != nil {
 		return nil, err

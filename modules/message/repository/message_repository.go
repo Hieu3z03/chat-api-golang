@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Hieu3z03/chat-api-golang/modules/message/model"
+	appLogger "github.com/Hieu3z03/chat-api-golang/pkg/logger"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
@@ -29,6 +30,8 @@ func NewMessageRepository(database *mongo.Database) MessageRepository {
 }
 
 func (repository *messageRepository) EnsureIndexes(ctx context.Context) error {
+	defer appLogger.Measure(ctx, "MessageRepository.EnsureIndexes")()
+
 	if err := repository.backfillSequences(ctx); err != nil {
 		return err
 	}
@@ -58,6 +61,8 @@ func (repository *messageRepository) EnsureIndexes(ctx context.Context) error {
 }
 
 func (repository *messageRepository) Create(ctx context.Context, message model.Message) (model.Message, error) {
+	defer appLogger.Measure(ctx, "MessageRepository.Create")()
+
 	sequence, err := repository.nextSequence(ctx, message.ChannelID)
 	if err != nil {
 		return model.Message{}, err
@@ -80,6 +85,8 @@ func (repository *messageRepository) ListByChannel(
 	limit int64,
 	before *time.Time,
 ) ([]model.Message, error) {
+	defer appLogger.Measure(ctx, "MessageRepository.ListByChannel")()
+
 	filter := bson.D{{Key: "channel_id", Value: channelID}}
 	if before != nil {
 		filter = append(filter, bson.E{

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Hieu3z03/chat-api-golang/database/entities"
+	appLogger "github.com/Hieu3z03/chat-api-golang/pkg/logger"
 	"gorm.io/gorm"
 )
 
@@ -118,15 +119,18 @@ func (mm *MigrationManager) Run() error {
 			}
 
 			ranCount++
-			fmt.Printf("Migration %s executed successfully\n", migration.Name)
+			appLogger.Log(nil).Info().
+				Str("component", "migration").
+				Str("migration", migration.Name).
+				Int("batch", newBatch).
+				Msg("migration executed")
 		}
 	}
 
-	if ranCount == 0 {
-		fmt.Println("No new migrations to run")
-	} else {
-		fmt.Printf("Ran %d migration(s)\n", ranCount)
-	}
+	appLogger.Log(nil).Info().
+		Str("component", "migration").
+		Int("migrations_run", ranCount).
+		Msg("migration run completed")
 
 	return nil
 }
@@ -176,7 +180,10 @@ func (mm *MigrationManager) Rollback(batch int) error {
 		}
 
 		if migrationFile == nil {
-			fmt.Printf("Warning: Migration file for %s not found, skipping\n", migrationRecord.Name)
+			appLogger.Log(nil).Warn().
+				Str("component", "migration").
+				Str("migration", migrationRecord.Name).
+				Msg("migration file not found; skipping")
 			mm.deleteMigration(migrationRecord.Name)
 			continue
 		}
@@ -190,10 +197,16 @@ func (mm *MigrationManager) Rollback(batch int) error {
 		}
 
 		rolledBackCount++
-		fmt.Printf("Migration %s rolled back successfully\n", migrationRecord.Name)
+		appLogger.Log(nil).Info().
+			Str("component", "migration").
+			Str("migration", migrationRecord.Name).
+			Msg("migration rolled back")
 	}
 
-	fmt.Printf("Rolled back %d migration(s)\n", rolledBackCount)
+	appLogger.Log(nil).Info().
+		Str("component", "migration").
+		Int("migrations_rolled_back", rolledBackCount).
+		Msg("migration rollback completed")
 	return nil
 }
 
@@ -229,7 +242,10 @@ func (mm *MigrationManager) RollbackAll() error {
 		}
 
 		if migrationFile == nil {
-			fmt.Printf("Warning: Migration file for %s not found, skipping\n", migrationRecord.Name)
+			appLogger.Log(nil).Warn().
+				Str("component", "migration").
+				Str("migration", migrationRecord.Name).
+				Msg("migration file not found; skipping")
 			mm.deleteMigration(migrationRecord.Name)
 			continue
 		}
@@ -243,10 +259,16 @@ func (mm *MigrationManager) RollbackAll() error {
 		}
 
 		rolledBackCount++
-		fmt.Printf("Migration %s rolled back successfully\n", migrationRecord.Name)
+		appLogger.Log(nil).Info().
+			Str("component", "migration").
+			Str("migration", migrationRecord.Name).
+			Msg("migration rolled back")
 	}
 
-	fmt.Printf("Rolled back %d migration(s)\n", rolledBackCount)
+	appLogger.Log(nil).Info().
+		Str("component", "migration").
+		Int("migrations_rolled_back", rolledBackCount).
+		Msg("migration rollback all completed")
 	return nil
 }
 
@@ -260,26 +282,21 @@ func (mm *MigrationManager) Status() error {
 		return err
 	}
 
-	fmt.Println("\nMigration Status:")
-	fmt.Println(strings.Repeat("-", 80))
-	fmt.Printf("%-50s %-10s %-20s\n", "Migration", "Batch", "Ran At")
-	fmt.Println(strings.Repeat("-", 80))
-
-	if len(ranMigrations) == 0 {
-		fmt.Println("No migrations have been run")
-	} else {
-		for _, m := range ranMigrations {
-			fmt.Printf("%-50s %-10d %-20s\n", m.Name, m.Batch, m.CreatedAt.Format("2006-01-02 15:04:05"))
-		}
+	for _, migration := range ranMigrations {
+		appLogger.Log(nil).Info().
+			Str("component", "migration").
+			Str("migration", migration.Name).
+			Int("batch", migration.Batch).
+			Time("ran_at", migration.CreatedAt).
+			Msg("migration applied")
 	}
-
-	fmt.Println(strings.Repeat("-", 80))
-	fmt.Printf("Total: %d migration(s)\n", len(ranMigrations))
 
 	pendingCount := len(mm.migrations) - len(ranMigrations)
-	if pendingCount > 0 {
-		fmt.Printf("Pending: %d migration(s)\n", pendingCount)
-	}
+	appLogger.Log(nil).Info().
+		Str("component", "migration").
+		Int("applied", len(ranMigrations)).
+		Int("pending", pendingCount).
+		Msg("migration status")
 
 	return nil
 }
@@ -342,13 +359,22 @@ func (%s *%s) BeforeCreate(tx *gorm.DB) (err error) {
 			}
 
 			entityCreated = true
-			fmt.Printf("Entity file created: %s\n", entityPath)
+			appLogger.Log(nil).Info().
+				Str("component", "migration").
+				Str("path", entityPath).
+				Msg("entity file created")
 
 			if err := mm.addEntityToMigrationFile(entityName); err != nil {
-				fmt.Printf("Warning: Failed to add entity to migration.go: %v\n", err)
+				appLogger.Log(nil).Warn().Err(err).
+					Str("component", "migration").
+					Str("entity", entityName).
+					Msg("add entity to migration file")
 			}
 		} else {
-			fmt.Printf("Entity file already exists: %s\n", entityPath)
+			appLogger.Log(nil).Info().
+				Str("component", "migration").
+				Str("path", entityPath).
+				Msg("entity file already exists")
 		}
 
 		migrationTemplate = fmt.Sprintf(`package migrations
@@ -397,9 +423,15 @@ func Down%s(db *gorm.DB) error {
 		return fmt.Errorf("error creating migration file: %v", err)
 	}
 
-	fmt.Printf("Migration file created: %s\n", filePath)
+	appLogger.Log(nil).Info().
+		Str("component", "migration").
+		Str("path", filePath).
+		Msg("migration file created")
 	if entityCreated {
-		fmt.Printf("Entity %s has been created and added to migration\n", entityName)
+		appLogger.Log(nil).Info().
+			Str("component", "migration").
+			Str("entity", entityName).
+			Msg("entity created and added to migration")
 	}
 	return nil
 }

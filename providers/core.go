@@ -78,6 +78,11 @@ func RegisterDependencies(injector *do.Injector) error {
 		centrifugoSettings.APIKey,
 		centrifugoSettings.TokenHMACSecret,
 	)
+	centrifugoContext, centrifugoCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer centrifugoCancel()
+	if err := centrifugoClient.Ping(centrifugoContext); err != nil {
+		return fmt.Errorf("check Centrifugo connection: %w", err)
+	}
 	messageUseCases := messageService.NewMessageService(messages, channelUseCases, centrifugoClient)
 	realtimeUseCases := realtimeService.NewRealtimeService(centrifugoClient)
 

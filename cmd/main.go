@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"os"
 
 	"github.com/Hieu3z03/chat-api-golang/config"
@@ -10,6 +9,7 @@ import (
 	"github.com/Hieu3z03/chat-api-golang/modules/message"
 	"github.com/Hieu3z03/chat-api-golang/modules/realtime"
 	"github.com/Hieu3z03/chat-api-golang/modules/user"
+	appLogger "github.com/Hieu3z03/chat-api-golang/pkg/logger"
 	"github.com/Hieu3z03/chat-api-golang/providers"
 	"github.com/Hieu3z03/chat-api-golang/script"
 	"github.com/samber/do"
@@ -17,48 +17,62 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func args(injector *do.Injector) bool {
+func args(injector *do.Injector) (bool, error) {
 	if len(os.Args) > 1 {
-		flag := script.Commands(injector)
-		return flag
+		return script.Commands(injector)
 	}
 
-	return true
+	return true, nil
 }
 
-func run(server *gin.Engine) error {
+func run(server *gin.Engine, port string) error {
 	server.Static("/assets", "./assets")
-
-	port := os.Getenv("GOLANG_PORT")
-	if port == "" {
-		port = "8888"
-	}
-
 	return server.Run(":" + port)
+}
+
+func serverPort() string {
+	if port := os.Getenv("GOLANG_PORT"); port != "" {
+		return port
+	}
+	return "8888"
 }
 
 func main() {
 	if err := config.LoadEnvironment(); err != nil {
-		log.Fatal(err)
+		appLogger.Log(nil).Error().Err(err).Msg("load environment")
+		return
+	}
+	if err := appLogger.ConfigureFromEnv(); err != nil {
+		appLogger.Log(nil).Error().Err(err).Msg("configure logger")
+		return
 	}
 
 	injector := do.New()
 	defer func() {
 		if err := injector.Shutdown(); err != nil {
-			log.Printf("shutdown dependencies: %v", err)
+			appLogger.Log(nil).Error().Err(err).Msg("shutdown dependencies")
 		}
 	}()
 
 	if err := providers.RegisterDependencies(injector); err != nil {
-		log.Printf("initialize dependencies: %v", err)
+		appLogger.Log(nil).Error().Err(err).Msg("initialize dependencies")
 		return
 	}
 
-	if !args(injector) {
+	shouldRun, err := args(injector)
+	if err != nil {
+		appLogger.Log(nil).Error().Err(err).Msg("run command")
+		return
+	}
+	if !shouldRun {
 		return
 	}
 
-	server := gin.Default()
+	server := gin.New()
+	server.Use(middlewares.RequestID())
+	server.Use(middlewares.HTTPLogger())
+	server.Use(middlewares.ErrorLogger())
+	server.Use(middlewares.Recovery())
 	server.Use(middlewares.CORSMiddleware())
 
 	// Register module routes
@@ -67,7 +81,17 @@ func main() {
 	message.RegisterRoutes(server, injector)
 	realtime.RegisterRoutes(server, injector)
 
-	if err := run(server); err != nil {
-		log.Printf("run server: %v", err)
+	port := serverPort()
+	appLogger.Log(nil).Info().
+		Str("component", "startup").
+		Str("server_port", port).
+		Str("gin_mode", gin.Mode()).
+		Bool("postgresql_connected", true).
+		Bool("mongodb_connected", true).
+		Bool("centrifugo_connected", true).
+		Msg("server starting")
+
+	if err := run(server, port); err != nil {
+		appLogger.Log(nil).Error().Err(err).Msg("run server")
 	}
 }

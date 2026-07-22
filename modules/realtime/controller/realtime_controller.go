@@ -29,8 +29,9 @@ func NewRealtimeController(realtime service.RealtimeService) RealtimeController 
 
 func (controller *realtimeController) ConnectionToken(ctx *gin.Context) {
 	identity, _ := middlewares.GetRequestIdentity(ctx)
-	token, err := controller.realtime.ConnectionToken(identity.UserID)
+	token, err := controller.realtime.ConnectionToken(ctx.Request.Context(), identity.UserID)
 	if err != nil {
+		middlewares.RecordError(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, utils.BuildResponseFailed("failed to issue connection token", err.Error(), nil))
 		return
 	}
@@ -46,7 +47,8 @@ func (controller *realtimeController) SubscriptionToken(ctx *gin.Context) {
 		return
 	}
 
-	token, err := controller.realtime.SubscriptionToken(identity.UserID, channel)
+	token, err := controller.realtime.SubscriptionToken(ctx.Request.Context(), identity.UserID, channel)
+	middlewares.RecordError(ctx, err)
 	if errors.Is(err, service.ErrChannelAccessDenied) {
 		ctx.JSON(http.StatusForbidden, utils.BuildResponseFailed("realtime channel access denied", err.Error(), nil))
 		return

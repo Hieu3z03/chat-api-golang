@@ -1,8 +1,7 @@
 package script
 
 import (
-	"fmt"
-
+	appLogger "github.com/Hieu3z03/chat-api-golang/pkg/logger"
 	"gorm.io/gorm"
 )
 
@@ -20,6 +19,6 @@ func NewExampleScript(db *gorm.DB) *ExampleScript {
 
 func (s *ExampleScript) Run() error {
 	// your script here
-	fmt.Println("example script running")
+	appLogger.Log(nil).Info().Str("component", "script").Msg("example script running")
 	return nil
 }

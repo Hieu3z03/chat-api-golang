@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/Hieu3z03/chat-api-golang/database/entities"
+	appLogger "github.com/Hieu3z03/chat-api-golang/pkg/logger"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -26,6 +27,8 @@ func NewUserRepository(db *gorm.DB) UserRepository {
 }
 
 func (repository *userRepository) Upsert(ctx context.Context, user entities.User) (entities.User, error) {
+	defer appLogger.Measure(ctx, "UserRepository.Upsert")()
+
 	err := repository.db.WithContext(ctx).Clauses(clause.OnConflict{
 		Columns: []clause.Column{{Name: "id"}},
 		DoUpdates: clause.AssignmentColumns([]string{
@@ -42,6 +45,8 @@ func (repository *userRepository) Upsert(ctx context.Context, user entities.User
 }
 
 func (repository *userRepository) FindByID(ctx context.Context, userID uuid.UUID) (entities.User, error) {
+	defer appLogger.Measure(ctx, "UserRepository.FindByID")()
+
 	var user entities.User
 	if err := repository.db.WithContext(ctx).First(&user, "id = ?", userID).Error; err != nil {
 		return entities.User{}, err
@@ -51,6 +56,8 @@ func (repository *userRepository) FindByID(ctx context.Context, userID uuid.UUID
 }
 
 func (repository *userRepository) FindByUsername(ctx context.Context, username string) (entities.User, error) {
+	defer appLogger.Measure(ctx, "UserRepository.FindByUsername")()
+
 	var user entities.User
 	if err := repository.db.WithContext(ctx).First(&user, "username = ?", username).Error; err != nil {
 		return entities.User{}, err
@@ -60,6 +67,8 @@ func (repository *userRepository) FindByUsername(ctx context.Context, username s
 }
 
 func (repository *userRepository) FindByIDs(ctx context.Context, userIDs []uuid.UUID) ([]entities.User, error) {
+	defer appLogger.Measure(ctx, "UserRepository.FindByIDs")()
+
 	var users []entities.User
 	if len(userIDs) == 0 {
 		return users, nil
@@ -73,6 +82,8 @@ func (repository *userRepository) FindByIDs(ctx context.Context, userIDs []uuid.
 }
 
 func (repository *userRepository) Search(ctx context.Context, search string, limit int) ([]entities.User, error) {
+	defer appLogger.Measure(ctx, "UserRepository.Search")()
+
 	query := repository.db.WithContext(ctx).Order("username ASC").Limit(limit)
 	if search != "" {
 		pattern := "%" + search + "%"

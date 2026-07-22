@@ -49,6 +49,10 @@ Sao chép `.env.example` thành `.env` và nhập thông tin database thật:
 APP_NAME=chat-api
 GOLANG_PORT=8888
 
+LOG_LEVEL=info
+LOG_SQL=true
+LOG_HTTP=true
+
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
@@ -59,6 +63,11 @@ DB_SSLMODE=disable
 MONGO_URI=mongodb://localhost:27017
 MONGO_DATABASE=chat_api
 ```
+
+Logs are emitted as one JSON object per line on stdout. `LOG_LEVEL` accepts
+`trace`, `debug`, `info`, `warn`, `error`, or `disabled`. `LOG_SQL` controls
+GORM query logs and `LOG_HTTP` controls request completion logs; request error
+logs remain enabled according to `LOG_LEVEL`.
 
 Tạo database PostgreSQL `chat_api` trước bằng pgAdmin. Ứng dụng yêu cầu cả PostgreSQL và MongoDB truy cập được khi khởi động.
 

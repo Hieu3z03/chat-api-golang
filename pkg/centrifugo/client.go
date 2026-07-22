@@ -61,40 +61,51 @@ func (client *Client) signToken(claims jwt.MapClaims) (string, error) {
 }
 
 func (client *Client) Publish(ctx context.Context, channel string, data any) error {
-	payload, err := json.Marshal(map[string]any{
-		"method": "publish",
-		"params": map[string]any{
-			"channel": channel,
-			"data":    data,
-		},
+	return client.call(ctx, "publish", map[string]any{
+		"channel": channel,
+		"data":    data,
 	})
+
+}
+
+func (client *Client) Ping(ctx context.Context) error {
+	return client.call(ctx, "info", nil)
+}
+
+func (client *Client) call(ctx context.Context, method string, params any) error {
+	requestBody := map[string]any{"method": method}
+	if params != nil {
+		requestBody["params"] = params
+	}
+
+	payload, err := json.Marshal(requestBody)
 	if err != nil {
-		return fmt.Errorf("encode Centrifugo publish request: %w", err)
+		return fmt.Errorf("encode Centrifugo %s request: %w", method, err)
 	}
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, client.apiURL, bytes.NewReader(payload))
 	if err != nil {
-		return fmt.Errorf("create Centrifugo publish request: %w", err)
+		return fmt.Errorf("create Centrifugo %s request: %w", method, err)
 	}
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("X-API-Key", client.apiKey)
 
 	response, err := client.httpClient.Do(request)
 	if err != nil {
-		return fmt.Errorf("publish to Centrifugo: %w", err)
+		return fmt.Errorf("call Centrifugo %s: %w", method, err)
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
-		return fmt.Errorf("publish to Centrifugo: unexpected HTTP status %d", response.StatusCode)
+		return fmt.Errorf("call Centrifugo %s: unexpected HTTP status %d", method, response.StatusCode)
 	}
 
 	var result apiResponse
 	if err := json.NewDecoder(response.Body).Decode(&result); err != nil {
-		return fmt.Errorf("decode Centrifugo publish response: %w", err)
+		return fmt.Errorf("decode Centrifugo %s response: %w", method, err)
 	}
 	if result.Error != nil {
-		return fmt.Errorf("publish to Centrifugo: code %d: %s", result.Error.Code, result.Error.Message)
+		return fmt.Errorf("call Centrifugo %s: code %d: %s", method, result.Error.Code, result.Error.Message)
 	}
 
 	return nil

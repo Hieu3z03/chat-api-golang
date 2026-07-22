@@ -33,11 +33,13 @@ func (controller *userController) Sync(ctx *gin.Context) {
 
 	var request dto.SyncUserRequest
 	if err := ctx.ShouldBindJSON(&request); err != nil {
+		middlewares.RecordError(ctx, err)
 		ctx.JSON(http.StatusBadRequest, utils.BuildResponseFailed("invalid user payload", err.Error(), nil))
 		return
 	}
 
 	user, err := controller.users.Sync(ctx.Request.Context(), identity.UserID, request)
+	middlewares.RecordError(ctx, err)
 	if errors.Is(err, dto.ErrUsernameTaken) {
 		ctx.JSON(http.StatusConflict, utils.BuildResponseFailed("failed to sync user", err.Error(), nil))
 		return
@@ -62,6 +64,7 @@ func (controller *userController) Me(ctx *gin.Context) {
 func (controller *userController) GetByID(ctx *gin.Context) {
 	userID, err := uuid.Parse(ctx.Param("user_id"))
 	if err != nil {
+		middlewares.RecordError(ctx, err)
 		ctx.JSON(http.StatusBadRequest, utils.BuildResponseFailed("invalid user id", err.Error(), nil))
 		return
 	}
@@ -82,6 +85,7 @@ func (controller *userController) Search(ctx *gin.Context) {
 
 	users, err := controller.users.Search(ctx.Request.Context(), ctx.Query("search"), limit)
 	if err != nil {
+		middlewares.RecordError(ctx, err)
 		ctx.JSON(http.StatusInternalServerError, utils.BuildResponseFailed("failed to list users", err.Error(), nil))
 		return
 	}
@@ -91,6 +95,7 @@ func (controller *userController) Search(ctx *gin.Context) {
 
 func (controller *userController) respondWithUser(ctx *gin.Context, userID uuid.UUID) {
 	user, err := controller.users.GetByID(ctx.Request.Context(), userID)
+	middlewares.RecordError(ctx, err)
 	if errors.Is(err, dto.ErrUserNotFound) {
 		ctx.JSON(http.StatusNotFound, utils.BuildResponseFailed("user not found", err.Error(), nil))
 		return

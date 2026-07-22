@@ -3,6 +3,7 @@ package middlewares
 import (
 	"net/http"
 
+	appLogger "github.com/Hieu3z03/chat-api-golang/pkg/logger"
 	"github.com/Hieu3z03/chat-api-golang/pkg/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -19,6 +20,7 @@ func RequireIdentityHeaders() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		userID, err := uuid.Parse(ctx.GetHeader("x-user-id"))
 		if err != nil {
+			RecordError(ctx, err)
 			response := utils.BuildResponseFailed(
 				"invalid request identity",
 				"x-user-id header must be a valid UUID",
@@ -32,6 +34,7 @@ func RequireIdentityHeaders() gin.HandlerFunc {
 		if value := ctx.GetHeader("x-user-role"); value != "" {
 			roleID, err = uuid.Parse(value)
 			if err != nil {
+				RecordError(ctx, err)
 				response := utils.BuildResponseFailed(
 					"invalid request identity",
 					"x-user-role header must be a valid UUID when provided",
@@ -46,6 +49,9 @@ func RequireIdentityHeaders() gin.HandlerFunc {
 			UserID: userID,
 			RoleID: roleID,
 		})
+		ctx.Request = ctx.Request.WithContext(
+			appLogger.WithUserID(ctx.Request.Context(), userID.String()),
+		)
 		ctx.Next()
 	}
 }
