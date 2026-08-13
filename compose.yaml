@@ -1,6 +1,15 @@
 name: chat-api
 
 services:
+  redis:
+    image: redis:latest
+    container_name: redis-server
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: ["redis-server", "--appendonly", "yes"]
   centrifugo:
     container_name: centrifugo
     image: centrifugo/centrifugo:v6
@@ -37,10 +46,16 @@ services:
       CENTRIFUGO_API_URL: http://centrifugo:8000/api
       CENTRIFUGO_API_KEY: ${CENTRIFUGO_API_KEY:-change_me_centrifugo_api_key}
       CENTRIFUGO_TOKEN_HMAC_SECRET_KEY: ${CENTRIFUGO_TOKEN_HMAC_SECRET_KEY:-change_me_centrifugo_token_secret}
+      REDIS_ADDR: ${REDIS_ADDR:-redis:6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DB: ${REDIS_DB:-0}
+      REDIS_USERNAME: ${REDIS_USERNAME:-}
     ports:
       - "${GOLANG_PORT:-8888}:8888"
     depends_on:
       centrifugo:
+        condition: service_started
+      redis:
         condition: service_started
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -50,3 +65,6 @@ services:
       timeout: 3s
       retries: 5
       start_period: 10s
+    
+volumes:
+  redis-data:

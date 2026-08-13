@@ -12,5 +12,16 @@
     "password": "change_me_admin",
     "secret": "change_me_centrifugo_admin_secret",
     "enabled": true
+  },
+  "channel": {
+    "namespaces": [
+      {
+        "name": "chat",
+        "allow_subscribe_for_client": false
+      }
+    ],
+    "without_namespace": {
+      "allow_subscribe_for_client": true
+    }
   }
 }

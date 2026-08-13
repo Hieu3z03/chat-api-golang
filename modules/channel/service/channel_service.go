@@ -24,6 +24,7 @@ type ChannelService interface {
 		channelID, userID uuid.UUID,
 		lastReadSequence int64,
 	) ([]dto.ChannelMemberReadState, error)
+	DeleteChannel(ctx context.Context, channelID uuid.UUID, userID uuid.UUID) error
 }
 
 type channelService struct {
@@ -158,6 +159,20 @@ func (service *channelService) ListMembersAndMarkRead(
 	}
 
 	return result, nil
+}
+
+func (service *channelService) DeleteChannel(ctx context.Context, channelID uuid.UUID, userID uuid.UUID) error {
+	// defer appLogger.Measure(ctx, "ChannelService.DeleteChannel")()
+	channel, err := service.channels.FindByID(ctx, channelID)
+	if err != nil {
+		return errors.New("channel không tồn tại")
+	}
+
+	// 2. Kiểm tra xem người yêu cầu xóa có phải chủ sở hữu (Creator) không
+	if channel.CreatedBy != userID {
+		return errors.New("bạn không có quyền xóa channel này")
+	}
+	return service.channels.DeleteChannel(ctx, channelID)
 }
 
 func uniqueUserIDs(creatorID uuid.UUID, requested []uuid.UUID) []uuid.UUID {

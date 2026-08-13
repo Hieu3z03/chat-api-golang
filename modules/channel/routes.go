@@ -15,5 +15,6 @@ func RegisterRoutes(server *gin.Engine, injector *do.Injector) {
 		channelRoutes.POST("", channelController.Create)
 		channelRoutes.GET("", channelController.List)
 		channelRoutes.GET("/:channel_id", channelController.Get)
+		channelRoutes.DELETE("/:channel_id", channelController.Delete)
 	}
 }

@@ -19,6 +19,7 @@ import (
 	userService "github.com/Hieu3z03/chat-api-golang/modules/user/service"
 	"github.com/Hieu3z03/chat-api-golang/pkg/centrifugo"
 	"github.com/Hieu3z03/chat-api-golang/pkg/constants"
+	"github.com/redis/go-redis/v9"
 	"github.com/samber/do"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"gorm.io/gorm"
@@ -45,6 +46,18 @@ func InitDatabases(injector *do.Injector) {
 			return nil, err
 		}
 		return connection.Database, nil
+	})
+
+	do.Provide(injector, func(i *do.Injector) (*config.RedisConnection, error) {
+		return config.SetUpRedisConnection()
+	})
+
+	do.ProvideNamed(injector, constants.Redis, func(i *do.Injector) (*redis.Client, error) {
+		connection, err := do.Invoke[*config.RedisConnection](i)
+		if err != nil {
+			return nil, err
+		}
+		return connection.Client, nil
 	})
 }
 
@@ -73,10 +86,16 @@ func RegisterDependencies(injector *do.Injector) error {
 	userUseCases := userService.NewUserService(users)
 	channelUseCases := channelService.NewChannelService(channels, users)
 	centrifugoSettings := config.LoadCentrifugoSettings()
+
 	centrifugoClient := centrifugo.NewClient(
 		centrifugoSettings.APIURL,
 		centrifugoSettings.APIKey,
 		centrifugoSettings.TokenHMACSecret,
+	)
+
+	realtimeUseCases := realtimeService.NewRealtimeService(
+		centrifugoClient,
+		channels,
 	)
 	centrifugoContext, centrifugoCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer centrifugoCancel()
@@ -84,7 +103,9 @@ func RegisterDependencies(injector *do.Injector) error {
 		return fmt.Errorf("check Centrifugo connection: %w", err)
 	}
 	messageUseCases := messageService.NewMessageService(messages, channelUseCases, centrifugoClient)
-	realtimeUseCases := realtimeService.NewRealtimeService(centrifugoClient)
+	realtimeService.NewRealtimeService(
+		centrifugoClient, channels,
+	)
 
 	do.Provide(injector, func(i *do.Injector) (userController.UserController, error) {
 		return userController.NewUserController(userUseCases), nil

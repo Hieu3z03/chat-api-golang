@@ -13,7 +13,7 @@ type Channel struct {
 	CreatedBy uuid.UUID       `gorm:"type:uuid;not null;index" json:"created_by"`
 	Creator   User            `gorm:"foreignKey:CreatedBy;constraint:OnUpdate:CASCADE,OnDelete:RESTRICT" json:"creator,omitempty"`
 	Members   []ChannelMember `gorm:"foreignKey:ChannelID" json:"members,omitempty"`
-
+	DeletedAt gorm.DeletedAt  `gorm:"index" json:"deleted_at,omitempty"`
 	Timestamp
 }
 

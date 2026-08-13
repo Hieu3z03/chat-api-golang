@@ -10,7 +10,6 @@ import (
 	"github.com/Hieu3z03/chat-api-golang/modules/message/dto"
 	"github.com/Hieu3z03/chat-api-golang/modules/message/model"
 	"github.com/Hieu3z03/chat-api-golang/modules/message/repository"
-	realtimeService "github.com/Hieu3z03/chat-api-golang/modules/realtime/service"
 	appLogger "github.com/Hieu3z03/chat-api-golang/pkg/logger"
 	"github.com/google/uuid"
 )
@@ -66,7 +65,7 @@ func (service *messageService) Create(
 ) (dto.MessageResponse, error) {
 	defer appLogger.Measure(ctx, "MessageService.Create")()
 
-	channel, err := service.channels.Get(ctx, userID, channelID)
+	_, err := service.channels.Get(ctx, userID, channelID)
 	if err != nil {
 		return dto.MessageResponse{}, err
 	}
@@ -86,14 +85,13 @@ func (service *messageService) Create(
 	}
 
 	response := toMessageResponse(message, []channelDTO.ChannelUserResponse{})
-	service.publishMessageCreated(ctx, channel.Members, response)
+	service.publishMessageCreated(ctx, response)
 
 	return response, nil
 }
 
 func (service *messageService) publishMessageCreated(
 	ctx context.Context,
-	members []channelDTO.ChannelUserResponse,
 	message dto.MessageResponse,
 ) {
 	if service.publisher == nil {
@@ -104,15 +102,16 @@ func (service *messageService) publishMessageCreated(
 		"type": "message_added",
 		"body": message,
 	}
-	for _, member := range members {
-		channel := realtimeService.PersonalChannel(member.ID)
-		if err := service.publisher.Publish(ctx, channel, event); err != nil {
-			appLogger.Log(ctx).Error().Err(err).
-				Str("component", "service").
-				Str("message_id", message.ID).
-				Str("channel", channel).
-				Msg("publish message")
-		}
+	channel := "chat:" + message.ChannelID.String()
+
+	if err := service.publisher.Publish(ctx, channel, event); err != nil {
+		appLogger.Log(ctx).
+			Error().
+			Err(err).
+			Str("component", "service").
+			Str("message_id", message.ID).
+			Str("channel", channel).
+			Msg("publish message")
 	}
 }
 

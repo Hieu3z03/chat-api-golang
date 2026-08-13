@@ -16,6 +16,7 @@ type ChannelController interface {
 	Create(ctx *gin.Context)
 	Get(ctx *gin.Context)
 	List(ctx *gin.Context)
+	Delete(ctx *gin.Context)
 }
 
 type channelController struct {
@@ -91,4 +92,52 @@ func (controller *channelController) List(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, utils.BuildResponseSuccess("channels retrieved", channels))
+}
+
+func (controller *channelController) Delete(ctx *gin.Context) {
+	// 1. Trích xuất thông tin định danh
+	identity, exists := middlewares.GetRequestIdentity(ctx)
+	if !exists {
+		// Gọi đúng hàm BuildResponseFailed với đầy đủ tham số (Message, Error, Data)
+		response := utils.BuildResponseFailed("Yêu cầu xác thực tài khoản", "Unauthorized", nil)
+		ctx.JSON(http.StatusUnauthorized, response)
+		return
+	}
+
+	// 2. Lấy và kiểm tra định dạng Channel ID từ URL
+	idParam := ctx.Param("channel_id")
+	channelID, err := uuid.Parse(idParam)
+	if err != nil {
+		response := utils.BuildResponseFailed("Định dạng Channel ID không hợp lệ", err.Error(), nil)
+		ctx.JSON(http.StatusBadRequest, response)
+		return
+	}
+
+	// 3. Gọi tầng Service xử lý (Đổi tên biến context của Go thành goCtx để tránh trùng với ctx của Gin)
+	goCtx := ctx.Request.Context()
+	err = controller.channels.DeleteChannel(goCtx, channelID, identity.UserID)
+	if err != nil {
+		// Xử lý lỗi không tìm thấy channel
+		if err.Error() == "channel không tồn tại" {
+			response := utils.BuildResponseFailed("Không thể xóa channel", err.Error(), nil)
+			ctx.JSON(http.StatusNotFound, response)
+			return
+		}
+
+		// Xử lý lỗi phân quyền
+		if err.Error() == "bạn không có quyền xóa channel này" {
+			response := utils.BuildResponseFailed("Từ chối truy cập", err.Error(), nil)
+			ctx.JSON(http.StatusForbidden, response)
+			return
+		}
+
+		// Xử lý các lỗi hệ thống khác
+		response := utils.BuildResponseFailed("Xóa channel thất bại", err.Error(), nil)
+		ctx.JSON(http.StatusInternalServerError, response)
+		return
+	}
+
+	// 4. Trả về phản hồi thành công thống nhất cấu trúc
+	successResponse := utils.BuildResponseSuccess("Xóa channel thành công", nil)
+	ctx.JSON(http.StatusOK, successResponse)
 }

@@ -22,6 +22,7 @@ type ChannelRepository interface {
 		channelID, userID uuid.UUID,
 		lastReadSequence int64,
 	) ([]ChannelMemberWithUser, error)
+	DeleteChannel(ctx context.Context, channelID uuid.UUID) error
 }
 
 type ChannelMemberWithUser struct {
@@ -147,7 +148,7 @@ func (repository *channelRepository) ListByUser(ctx context.Context, userID uuid
 	var channels []entities.Channel
 	err := repository.db.WithContext(ctx).
 		Joins("JOIN channel_members ON channel_members.channel_id = channels.id").
-		Where("channel_members.user_id = ?", userID).
+		Where("channel_members.user_id = ? AND deleted_at IS NULL", userID).
 		Preload("Creator").
 		Preload("Members.User").
 		Order("channels.updated_at DESC").
@@ -223,4 +224,22 @@ ORDER BY cm.joined_at ASC, cm.user_id ASC`
 	}
 
 	return members, nil
+}
+
+func (repository *channelRepository) DeleteChannel(ctx context.Context, channelID uuid.UUID) error {
+	defer appLogger.Measure(ctx, "ChannelRepository.DeleteChannel")()
+	var channel entities.Channel
+	err := repository.db.WithContext(ctx).First(&channel, "id = ?", channelID).Error
+	if err != nil {
+		return err
+	}
+
+	err = repository.db.WithContext(ctx).
+		Model(&channel).
+		UpdateColumn("deleted_at", time.Now()).Error
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
