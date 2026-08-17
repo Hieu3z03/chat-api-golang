@@ -70,14 +70,14 @@ func (service *messageService) Create(
 		return dto.MessageResponse{}, err
 	}
 
-	contentType, ok := request.Content["type"].(string)
-	if !ok || strings.TrimSpace(contentType) == "" {
+	if strings.TrimSpace(string(request.Type)) == "" || request.Content == nil || strings.TrimSpace(*request.Content) == "" {
 		return dto.MessageResponse{}, dto.ErrInvalidMessageContent
 	}
 
 	message, err := service.messages.Create(ctx, model.Message{
 		ChannelID: channelID.String(),
 		UserID:    userID.String(),
+		Type:      request.Type,
 		Content:   request.Content,
 	})
 	if err != nil {
@@ -164,8 +164,10 @@ func toMessageResponse(
 		ID:        message.ID.Hex(),
 		ChannelID: uuid.MustParse(message.ChannelID),
 		UserID:    uuid.MustParse(message.UserID),
-		Sequence:  message.Sequence,
+		Type:      message.Type,
 		Content:   message.Content,
+		Sequence:  message.Sequence,
+		IsDeleted: message.IsDeleted,
 		CreatedAt: message.CreatedAt,
 		SeenBy:    seenBy,
 	}

@@ -5,21 +5,25 @@ import (
 	"time"
 
 	channelDTO "github.com/Hieu3z03/chat-api-golang/modules/channel/dto"
+	"github.com/Hieu3z03/chat-api-golang/modules/message/model"
 	"github.com/google/uuid"
 )
 
-var ErrInvalidMessageContent = errors.New("message content must contain a non-empty string type")
+var ErrInvalidMessageContent = errors.New("message type and content must be valid")
 
 type CreateMessageRequest struct {
-	Content map[string]any `json:"content" binding:"required"`
+	Type    model.MessageType `json:"type" binding:"required"`
+	Content *string           `json:"content" binding:"required"`
 }
 
 type MessageResponse struct {
 	ID        string                           `json:"id"`
 	ChannelID uuid.UUID                        `json:"channel_id"`
 	UserID    uuid.UUID                        `json:"user_id"`
+	Type      model.MessageType                `json:"type"`
+	Content   *string                          `json:"content,omitempty"`
 	Sequence  int64                            `json:"sequence"`
-	Content   map[string]any                   `json:"content"`
+	IsDeleted bool                             `json:"is_deleted"`
 	CreatedAt time.Time                        `json:"created_at"`
 	SeenBy    []channelDTO.ChannelUserResponse `json:"seen_by"`
 }

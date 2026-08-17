@@ -70,6 +70,7 @@ func (repository *messageRepository) Create(ctx context.Context, message model.M
 
 	message.ID = bson.NewObjectID()
 	message.Sequence = sequence
+	message.IsDeleted = false
 	message.CreatedAt = time.Now().UTC()
 
 	if _, err := repository.collection.InsertOne(ctx, message); err != nil {
